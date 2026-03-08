@@ -781,6 +781,18 @@ async def process_complaint(query: types.CallbackQuery, state: FSMContext):
     user_id = query.from_user.id
     db.add_complaint(user_id, to_user_id, complaint_type)
     
+    # Notify admin with target user ID
+    from_user = db.get_user(user_id)
+    to_user = db.get_user(to_user_id)
+    try:
+        admin_text = f"🚨 Новая жалоба!\n\n"
+        admin_text += f"От: {from_user['name'] if from_user else '?'} (ID: {user_id})\n"
+        admin_text += f"На: {to_user['name'] if to_user else '?'} (ID: {to_user_id})\n"
+        admin_text += f"Тип: {complaint_type}"
+        await bot.send_message(ADMIN_ID, admin_text)
+    except Exception as e:
+        logger.error(f"Failed to notify admin about complaint: {e}")
+    
     await query.message.answer(
         t(user_id, 'complaint_sent'),
         reply_markup=get_main_menu_keyboard(user_id)
