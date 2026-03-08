@@ -43,27 +43,35 @@ class MainMenuState(StatesGroup):
     viewing_profile = State()
     browsing_feed = State()
     in_chat = State()
-    proposing_date = State()
     rating_user = State()
     in_admin = State()
     admin_search_user = State()
     admin_broadcast = State()
     viewing_photos = State()
     editing_profile = State()
-    in_support = State()
 
-# Keyboards
+# ===== Keyboards =====
+
+BACK_TEXT = "◀️ Назад"
+
+def get_back_keyboard() -> ReplyKeyboardMarkup:
+    builder = ReplyKeyboardBuilder()
+    builder.button(text=BACK_TEXT)
+    return builder.as_markup(resize_keyboard=True)
+
 def get_gender_keyboard() -> ReplyKeyboardMarkup:
     builder = ReplyKeyboardBuilder()
     builder.button(text="👨 Мужской")
     builder.button(text="👩 Женский")
-    builder.adjust(2)
+    builder.button(text=BACK_TEXT)
+    builder.adjust(2, 1)
     return builder.as_markup(resize_keyboard=True)
 
 def get_cities_keyboard() -> ReplyKeyboardMarkup:
     builder = ReplyKeyboardBuilder()
     for city in BELARUS_CITIES:
         builder.button(text=city)
+    builder.button(text=BACK_TEXT)
     builder.adjust(2)
     return builder.as_markup(resize_keyboard=True)
 
@@ -77,6 +85,7 @@ def get_interests_keyboard(selected: list = None) -> InlineKeyboardMarkup:
     builder.adjust(2)
     if len(selected) > 0:
         builder.button(text="✅ Готово", callback_data="interests_done")
+    builder.button(text=BACK_TEXT, callback_data="interests_back")
     builder.adjust(1)
     return builder.as_markup()
 
@@ -88,7 +97,7 @@ def get_main_menu_keyboard(user_id: int = None) -> ReplyKeyboardMarkup:
     builder.button(text="🔍 Просмотр фото")
     builder.button(text="✏️ Отредактировать")
     builder.button(text="📞 Поддержка")
-    # Show admin button only for admin user
+    builder.button(text="🗑 Удалить анкету")
     if user_id and user_id == ADMIN_ID:
         builder.button(text="🔧 Админ")
     builder.adjust(2)
@@ -100,7 +109,7 @@ def get_admin_keyboard() -> ReplyKeyboardMarkup:
     builder.button(text="👥 Управление пользователями")
     builder.button(text="📊 Статистика")
     builder.button(text="📢 Рассылка")
-    builder.button(text="◀️ Назад")
+    builder.button(text=BACK_TEXT)
     builder.adjust(2)
     return builder.as_markup(resize_keyboard=True)
 
@@ -109,6 +118,7 @@ def get_feed_keyboard() -> InlineKeyboardMarkup:
     builder.button(text="❤️ Лайк", callback_data="like_profile")
     builder.button(text="👎 Пропустить", callback_data="skip_profile")
     builder.button(text="🚨 Пожаловаться", callback_data="report_profile")
+    builder.button(text=BACK_TEXT, callback_data="feed_back")
     builder.adjust(1)
     return builder.as_markup()
 
@@ -120,9 +130,16 @@ def get_match_keyboard(match_id: int) -> InlineKeyboardMarkup:
     builder.adjust(1)
     return builder.as_markup()
 
-def get_date_confirmation_keyboard(date_id: int) -> InlineKeyboardMarkup:
+def get_date_accept_keyboard(date_id: int) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text="✅ Я на месте", callback_data=f"confirm_date_{date_id}")
+    builder.button(text="✅ Подтвердить свидание", callback_data=f"accept_date_{date_id}")
+    builder.button(text="❌ Отклонить", callback_data=f"decline_date_{date_id}")
+    builder.adjust(1)
+    return builder.as_markup()
+
+def get_date_arrival_keyboard(date_id: int) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="✅ Я на месте", callback_data=f"arrived_date_{date_id}")
     builder.adjust(1)
     return builder.as_markup()
 
@@ -156,7 +173,8 @@ def get_complaint_types_keyboard(to_user_id: int) -> InlineKeyboardMarkup:
     builder.adjust(1)
     return builder.as_markup()
 
-# Helper functions
+# ===== Helper functions =====
+
 def extract_gender_from_text(text: str) -> Optional[str]:
     if "Мужской" in text:
         return "M"
@@ -168,14 +186,12 @@ def get_opposite_gender(gender: str) -> str:
     return "F" if gender == "M" else "M"
 
 def get_next_profile_to_show(user_id: int) -> Optional[dict]:
-    """Get the next profile to show based on ranking algorithm"""
     user = db.get_user(user_id)
     if not user:
         return None
     
     all_users = db.get_all_users()
     
-    # Filter: opposite gender, not banned, not self
     candidates = []
     for u in all_users:
         if u['user_id'] == user_id:
@@ -194,40 +210,29 @@ def get_next_profile_to_show(user_id: int) -> Optional[dict]:
     if not candidates:
         return None
     
-    # Ranking algorithm
     def score_profile(profile):
         score = 0
-        
-        # High rating priority (4.5+)
         if profile['rating'] >= 4.5:
             score += 1000
-        
-        # Same city priority
         if profile['city'] == user['city']:
             score += 500
-        
-        # Newbie boost (created within 48 hours)
         user_obj = db.get_user(profile['user_id'])
         created = datetime.fromisoformat(user_obj['created_at'])
         if datetime.now() - created < timedelta(hours=NEWBIE_BOOST_HOURS):
             score += 300
-        
-        # Recent activity
         if user_obj['last_seen']:
             last_seen = datetime.fromisoformat(user_obj['last_seen'])
             hours_ago = (datetime.now() - last_seen).total_seconds() / 3600
             if hours_ago < 24:
                 score += 200
-        
-        # Rating as tiebreaker
         score += profile['rating'] * 10
-        
         return score
     
     candidates.sort(key=score_profile, reverse=True)
     return db.get_user(candidates[0]['user_id'])
 
-# Command handlers
+# ===== Command handlers =====
+
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
@@ -243,7 +248,9 @@ async def cmd_start(message: types.Message, state: FSMContext):
     else:
         await message.answer(
             "👋 Добро пожаловать в ЦИТРАМОН - приложение для знакомств в Беларуси!\n\n"
-            "Давайте создадим вашу анкету. Как вас зовут? (максимум 20 символов)"
+            "Давайте создадим вашу анкету. Как вас зовут? (максимум 20 символов)\n\n"
+            "Для отмены нажмите ◀️ Назад",
+            reply_markup=get_back_keyboard()
         )
         await state.set_state(RegistrationState.waiting_for_name)
 
@@ -259,26 +266,32 @@ async def cmd_admin(message: types.Message, state: FSMContext):
     )
     await state.set_state(MainMenuState.in_admin)
 
-# Registration handlers
+# ===== Registration handlers with BACK buttons =====
+
 @dp.message(RegistrationState.waiting_for_name)
 async def process_name(message: types.Message, state: FSMContext):
+    if message.text == BACK_TEXT:
+        await state.clear()
+        user = db.get_user(message.from_user.id)
+        if user and user['registration_complete']:
+            await message.answer("Выберите действие:", reply_markup=get_main_menu_keyboard(message.from_user.id))
+            await state.set_state(MainMenuState.main_menu)
+        else:
+            await message.answer("Регистрация отменена. Напишите /start чтобы начать заново.", reply_markup=types.ReplyKeyboardRemove())
+        return
+    
     try:
-        # Ignore commands and empty messages
         if not message.text or message.text.startswith('/'):
             await message.answer("❌ Пожалуйста, введите ваше имя (текст без команд).")
             return
         
         name = message.text.strip()
-        
-        # Check for empty after strip
         if not name:
             await message.answer("❌ Имя не может быть пустым.")
             return
-        
         if len(name) > MAX_NAME_LENGTH:
             await message.answer(f"❌ Имя слишком длинное. Максимум {MAX_NAME_LENGTH} символов.")
             return
-        
         if len(name) < 2:
             await message.answer("❌ Имя слишком короткое. Минимум 2 символа.")
             return
@@ -292,17 +305,23 @@ async def process_name(message: types.Message, state: FSMContext):
     except Exception as e:
         logger.error(f"Error in process_name: {e}")
         await message.answer("❌ Ошибка при обработке имени. Попробуйте снова.")
-        return
 
 @dp.message(RegistrationState.waiting_for_gender)
 async def process_gender(message: types.Message, state: FSMContext):
+    if message.text == BACK_TEXT:
+        await message.answer(
+            "Как вас зовут? (максимум 20 символов)",
+            reply_markup=get_back_keyboard()
+        )
+        await state.set_state(RegistrationState.waiting_for_name)
+        return
+    
     try:
         if not message.text or message.text.startswith('/'):
             await message.answer("❌ Пожалуйста, выберите пол из кнопок.")
             return
         
         gender = extract_gender_from_text(message.text)
-        
         if not gender:
             await message.answer("❌ Пожалуйста, выберите пол из предложенных вариантов.")
             return
@@ -314,12 +333,17 @@ async def process_gender(message: types.Message, state: FSMContext):
     await state.update_data(gender=gender)
     await message.answer(
         "Сколько вам лет? (введите число, минимум 18)",
-        reply_markup=types.ReplyKeyboardRemove()
+        reply_markup=get_back_keyboard()
     )
     await state.set_state(RegistrationState.waiting_for_age)
 
 @dp.message(RegistrationState.waiting_for_age)
 async def process_age(message: types.Message, state: FSMContext):
+    if message.text == BACK_TEXT:
+        await message.answer("Выберите ваш пол:", reply_markup=get_gender_keyboard())
+        await state.set_state(RegistrationState.waiting_for_gender)
+        return
+    
     try:
         if not message.text or message.text.startswith('/'):
             await message.answer("❌ Пожалуйста, введите число.")
@@ -346,55 +370,66 @@ async def process_age(message: types.Message, state: FSMContext):
 
 @dp.message(RegistrationState.waiting_for_city)
 async def process_city(message: types.Message, state: FSMContext):
-    city = message.text.strip()
+    if message.text == BACK_TEXT:
+        await message.answer("Сколько вам лет? (введите число, минимум 18)", reply_markup=get_back_keyboard())
+        await state.set_state(RegistrationState.waiting_for_age)
+        return
     
+    city = message.text.strip()
     if city not in BELARUS_CITIES:
-        await message.answer(f"❌ Пожалуйста, выберите город из предложенных вариантов.")
+        await message.answer("❌ Пожалуйста, выберите город из предложенных вариантов.")
         return
     
     await state.update_data(city=city)
     await message.answer(
-        "Загрузите 1-3 фотографии вашего профиля. Отправьте фото одно за другим.\n"
-        "Когда закончите, напишите 'Готово'",
-        reply_markup=types.ReplyKeyboardRemove()
+        "Загрузите фотографию вашего профиля.",
+        reply_markup=get_back_keyboard()
     )
     await state.update_data(photos=[])
     await state.set_state(RegistrationState.waiting_for_photos)
 
 @dp.message(RegistrationState.waiting_for_photos)
 async def process_photos(message: types.Message, state: FSMContext):
+    if message.text == BACK_TEXT:
+        await message.answer("Выберите ваш город:", reply_markup=get_cities_keyboard())
+        await state.set_state(RegistrationState.waiting_for_city)
+        return
+    
     data = await state.get_data()
     photos = data.get('photos', [])
     
-    if message.text and message.text.strip().lower() == 'готово':
-        if len(photos) == 0:
-            await message.answer("❌ Пожалуйста, загрузьте хотя бы одну фотографию.")
-            return
-        
-        await message.answer(
-            "Напишите о себе (максимум 200 символов):",
-            reply_markup=types.ReplyKeyboardRemove()
-        )
-        await state.set_state(RegistrationState.waiting_for_bio)
-        return
-    
     if message.photo:
         if len(photos) >= MAX_PHOTOS:
-            await message.answer(f"❌ Максимум {MAX_PHOTOS} фотографий.")
+            await message.answer(f"❌ Максимум {MAX_PHOTOS} фотография.")
             return
         
         photo = message.photo[-1]
         photos.append(photo.file_id)
         await state.update_data(photos=photos)
-        await message.answer(f"✅ Фотография {len(photos)}/{MAX_PHOTOS} загружена. Отправьте ещё фото или напишите 'Готово'")
+        
+        # With MAX_PHOTOS=1, auto-advance to bio step
+        await message.answer(
+            "✅ Фотография загружена!\n\nНапишите о себе (максимум 200 символов):",
+            reply_markup=get_back_keyboard()
+        )
+        await state.set_state(RegistrationState.waiting_for_bio)
         return
     
-    await message.answer("❌ Пожалуйста, отправьте фотографию или напишите 'Готово'")
+    await message.answer("❌ Пожалуйста, отправьте фотографию.")
 
 @dp.message(RegistrationState.waiting_for_bio)
 async def process_bio(message: types.Message, state: FSMContext):
-    bio = message.text.strip()
+    if message.text == BACK_TEXT:
+        await state.update_data(photos=[])
+        await message.answer("Загрузите фотографию вашего профиля.", reply_markup=get_back_keyboard())
+        await state.set_state(RegistrationState.waiting_for_photos)
+        return
     
+    if not message.text:
+        await message.answer("❌ Пожалуйста, введите текст о себе.")
+        return
+    
+    bio = message.text.strip()
     if len(bio) > MAX_BIO_LENGTH:
         await message.answer(f"❌ Описание слишком длинное. Максимум {MAX_BIO_LENGTH} символов.")
         return
@@ -412,12 +447,19 @@ async def process_interests(query: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
     interests = data.get('interests', [])
     
+    if query.data == "interests_back":
+        await query.message.answer(
+            "Напишите о себе (максимум 200 символов):",
+            reply_markup=get_back_keyboard()
+        )
+        await state.set_state(RegistrationState.waiting_for_bio)
+        return
+    
     if query.data == "interests_done":
         if len(interests) == 0:
             await query.answer("❌ Выберите хотя бы один интерес")
             return
         
-        # Save user to database
         user_data = await state.get_data()
         user_id = query.from_user.id
         
@@ -429,11 +471,9 @@ async def process_interests(query: types.CallbackQuery, state: FSMContext):
             city=user_data['city']
         )
         
-        # Add photos
         for photo_id in user_data['photos']:
             db.add_photo(user_id, photo_id)
         
-        # Update user with bio and interests
         db.update_user(
             user_id,
             bio=user_data['bio'],
@@ -465,7 +505,8 @@ async def process_interests(query: types.CallbackQuery, state: FSMContext):
             reply_markup=get_interests_keyboard(interests)
         )
 
-# Main menu handlers
+# ===== Main menu handlers =====
+
 @dp.message(MainMenuState.main_menu, F.text == "❤️ Лента анкет")
 async def show_feed(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
@@ -483,7 +524,6 @@ async def show_feed(message: types.Message, state: FSMContext):
     
     await state.update_data(current_profile_id=profile['user_id'])
     
-    # Get profile info
     photos = db.get_user_photos(profile['user_id'])
     interests = json.loads(profile['interests']) if profile['interests'] else []
     
@@ -493,11 +533,10 @@ async def show_feed(message: types.Message, state: FSMContext):
     caption += f"📝 {profile['bio']}\n\n"
     caption += f"💫 Интересы: {', '.join(interests)}"
     
-    # Add reviews if available
     ratings = db.get_user_ratings(profile['user_id'])
     if ratings:
         caption += "\n\n📝 Отзывы:\n"
-        for rating in ratings[:3]:  # Show last 3 reviews
+        for rating in ratings[:3]:
             caption += f"⭐ {rating['stars']} звёзд\n"
             if rating['positive_tags']:
                 pos_tags = json.loads(rating['positive_tags'])
@@ -517,6 +556,13 @@ async def show_feed(message: types.Message, state: FSMContext):
     
     await state.set_state(MainMenuState.browsing_feed)
 
+# Feed: Back button
+@dp.callback_query(MainMenuState.browsing_feed, F.data == "feed_back")
+async def feed_back(query: types.CallbackQuery, state: FSMContext):
+    user_id = query.from_user.id
+    await query.message.answer("Выберите действие:", reply_markup=get_main_menu_keyboard(user_id))
+    await state.set_state(MainMenuState.main_menu)
+
 @dp.callback_query(MainMenuState.browsing_feed, F.data == "like_profile")
 async def like_profile(query: types.CallbackQuery, state: FSMContext):
     user_id = query.from_user.id
@@ -527,14 +573,11 @@ async def like_profile(query: types.CallbackQuery, state: FSMContext):
         await query.answer("❌ Ошибка")
         return
     
-    # Add like
     db.add_like(user_id, to_user_id)
     
-    # Check for mutual like
     if db.check_mutual_like(user_id, to_user_id):
         match_id = db.create_match(user_id, to_user_id)
         
-        # Notify both users
         await bot.send_message(
             user_id,
             f"❤️ Взаимный лайк! Вы мэтчились!\n\n"
@@ -586,7 +629,6 @@ async def skip_profile(query: types.CallbackQuery, state: FSMContext):
     if to_user_id:
         db.add_skip(user_id, to_user_id)
     
-    # Show next profile
     profile = get_next_profile_to_show(user_id)
     if profile:
         await state.update_data(current_profile_id=profile['user_id'])
@@ -685,9 +727,8 @@ async def enter_chat(query: types.CallbackQuery, state: FSMContext):
     else:
         text = "💬 Нет сообщений. Начните разговор!\n\n"
     
-    text += "\nОтправьте сообщение:"
+    text += "\nОтправьте сообщение (или нажмите ◀️ Назад):"
     
-    # Add dating confirmation button
     builder = InlineKeyboardBuilder()
     builder.button(text="✅ СВИДАНИЕ СОСТОЯЛОСЬ", callback_data=f"confirm_dating_{match_id}")
     builder.adjust(1)
@@ -698,6 +739,12 @@ async def enter_chat(query: types.CallbackQuery, state: FSMContext):
 
 @dp.message(MainMenuState.in_chat)
 async def send_message(message: types.Message, state: FSMContext):
+    # Back button in chat
+    if message.text == BACK_TEXT:
+        await message.answer("Выберите действие:", reply_markup=get_main_menu_keyboard(message.from_user.id))
+        await state.set_state(MainMenuState.main_menu)
+        return
+    
     data = await state.get_data()
     match_id = data.get('current_match_id')
     
@@ -713,7 +760,6 @@ async def send_message(message: types.Message, state: FSMContext):
     
     db.send_message(match_id, message.from_user.id, to_user_id, message.text)
     
-    # Notify recipient
     sender = db.get_user(message.from_user.id)
     await bot.send_message(
         to_user_id,
@@ -732,35 +778,23 @@ async def confirm_dating(query: types.CallbackQuery, state: FSMContext):
     match_id = int(query.data.split("_")[2])
     user_id = query.from_user.id
     
-    # Mark this user as confirmed
     db.confirm_dating_occurred(match_id, user_id)
     
-    # Check if both users confirmed
     status = db.get_match_confirmation_status(match_id)
     partner_id = status['user2_id'] if status['user1_id'] == user_id else status['user1_id']
     
     if status['both_confirmed']:
-        # Both confirmed - notify both users
         await query.answer("✅ Оба пользователя подтвердили свидание!")
-        
         await query.message.answer(
             "🎉 Оба пользователя подтвердили, что свидание состоялось!\n\nТеперь вы можете оставить отзыв."
         )
-        
-        # Notify partner
         await bot.send_message(
             partner_id,
             "🎉 Оба пользователя подтвердили, что свидание состоялось!\n\nТеперь вы можете оставить отзыв."
         )
     else:
-        # Only this user confirmed - notify partner
         await query.answer("✅ Вы подтвердили свидание")
-        
-        await query.message.answer(
-            "⏳ Ожидание подтверждения от партнёра..."
-        )
-        
-        # Notify partner
+        await query.message.answer("⏳ Ожидание подтверждения от партнёра...")
         await bot.send_message(
             partner_id,
             "📄 Ваш партнёр подтвердил, что свидание состоялось. Подтвердите и вы."
@@ -772,7 +806,6 @@ async def rate_match(query: types.CallbackQuery, state: FSMContext):
     if len(parts) == 2:  # rate_{match_id}
         match_id = int(parts[1])
         
-        # Check if both users confirmed the dating
         if not db.is_dating_confirmed_by_both(match_id):
             await query.answer(
                 "❌ Оба пользователя должны подтвердить свидание в чате!",
@@ -847,7 +880,6 @@ async def done_negative_tags(query: types.CallbackQuery, state: FSMContext):
     pos_tags = data.get('pos_tags', [])
     neg_tags = data.get('neg_tags', [])
     
-    # Save rating
     db.add_rating(
         match_id,
         user_id,
@@ -867,7 +899,6 @@ async def done_negative_tags(query: types.CallbackQuery, state: FSMContext):
 async def invite_to_date(query: types.CallbackQuery, state: FSMContext):
     match_id = int(query.data.split("_")[1])
     
-    # Create inline keyboard for ONLINE/OFFLINE choice
     builder = InlineKeyboardBuilder()
     builder.button(text="📱 ОНЛАЙН", callback_data=f"invite_online_{match_id}")
     builder.button(text="🌟 ОФЛАЙН", callback_data=f"invite_offline_{match_id}")
@@ -906,84 +937,93 @@ async def invite_offline(query: types.CallbackQuery, state: FSMContext):
     
     await query.message.answer("✅ Приглашение отправлено!")
 
+# ===== Simplified date flow: propose → accept → both arrive =====
+
 @dp.callback_query(F.data.startswith("date_"))
 async def propose_date(query: types.CallbackQuery, state: FSMContext):
     match_id = int(query.data.split("_")[1])
+    user_id = query.from_user.id
+    partner_id = db.get_match_partner(match_id, user_id)
+    proposer = db.get_user(user_id)
+    
+    date_id = db.propose_date(match_id, user_id)
+    
+    await bot.send_message(
+        partner_id,
+        f"📅 {proposer['name']} назначает свидание!\n\nПодтвердите или отклоните.",
+        reply_markup=get_date_accept_keyboard(date_id)
+    )
     
     await query.message.answer(
-        "Введите дату и время встречи в формате: ДД.ММ.ГГГГ ЧЧ:МММ\n"
-        "Например: 15.03.2026 19:00"
+        "✅ Свидание предложено! Ожидаем подтверждения от партнёра.",
+        reply_markup=get_main_menu_keyboard(user_id)
     )
-    await state.update_data(date_match_id=match_id)
-    await state.set_state(MainMenuState.proposing_date)
+    await state.set_state(MainMenuState.main_menu)
 
-@dp.message(MainMenuState.proposing_date)
-async def process_date_proposal(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    match_id = data.get('date_match_id')
-    
-    try:
-        date_str = message.text.strip()
-        proposed_date = datetime.strptime(date_str, "%d.%m.%Y %H:%M")
-        
-        if proposed_date <= datetime.now():
-            await message.answer("❌ Дата должна быть в будущем")
-            return
-        
-        date_id = db.propose_date(match_id, message.from_user.id, proposed_date)
-        
-        # Notify partner
-        partner_id = db.get_match_partner(match_id, message.from_user.id)
-        proposer = db.get_user(message.from_user.id)
-        
-        await bot.send_message(
-            partner_id,
-            f"📅 {proposer['name']} предлагает встречу!\n\n"
-            f"Дата и время: {proposed_date.strftime('%d.%m.%Y в %H:%M')}\n\n"
-            f"Примите или отклоните предложение"
-        )
-        
-        await message.answer(
-            "✅ Предложение о встречу отправлено!",
-            reply_markup=get_main_menu_keyboard(message.from_user.id)
-        )
-        await state.set_state(MainMenuState.main_menu)
-    except ValueError:
-        await message.answer("❌ Неверный формат. Используйте: ДД.ММ.ГГГГ ЧЧ:МММ")
-
-@dp.callback_query(F.data.startswith("confirm_date_"))
-async def confirm_date_attendance(query: types.CallbackQuery, state: FSMContext):
+@dp.callback_query(F.data.startswith("accept_date_"))
+async def accept_date(query: types.CallbackQuery, state: FSMContext):
     date_id = int(query.data.split("_")[2])
     date_record = db.get_date(date_id)
     
     if not date_record:
-        await query.answer("❌ Встреча не найдена")
+        await query.answer("❌ Свидание не найдено")
         return
     
-    db.confirm_date_attendance(date_id, query.from_user.id)
+    db.accept_date(date_id)
     
-    # Check if both confirmed
-    updated_date = db.get_date(date_id)
-    if updated_date['proposer_confirmed'] and updated_date['other_confirmed']:
-        # Both confirmed - meeting is set
-        user1 = db.get_user(updated_date['user1_id'])
-        user2 = db.get_user(updated_date['user2_id'])
-        
-        await bot.send_message(
-            updated_date['user1_id'],
-            f"✅ Встреча подтверждена!\n\n"
-            f"Встреча с {user2['name']} запланирована на {updated_date['proposed_date']}"
-        )
-        
-        await bot.send_message(
-            updated_date['user2_id'],
-            f"✅ Встреча подтверждена!\n\n"
-            f"Встреча с {user1['name']} запланирована на {updated_date['proposed_date']}"
-        )
-        
-        await query.answer("✅ Встреча подтверждена обоими участниками!")
+    user_id = query.from_user.id
+    proposer_id = date_record['proposer_id']
+    
+    # Send arrival buttons to both
+    await query.message.answer(
+        "✅ Свидание подтверждено! Когда будете на месте, нажмите кнопку.",
+        reply_markup=get_date_arrival_keyboard(date_id)
+    )
+    
+    await bot.send_message(
+        proposer_id,
+        "✅ Партнёр подтвердил свидание! Когда будете на месте, нажмите кнопку.",
+        reply_markup=get_date_arrival_keyboard(date_id)
+    )
+
+@dp.callback_query(F.data.startswith("decline_date_"))
+async def decline_date(query: types.CallbackQuery, state: FSMContext):
+    date_id = int(query.data.split("_")[2])
+    date_record = db.get_date(date_id)
+    
+    if not date_record:
+        await query.answer("❌ Свидание не найдено")
+        return
+    
+    proposer_id = date_record['proposer_id']
+    
+    await query.message.answer("❌ Вы отклонили свидание.")
+    await bot.send_message(proposer_id, "😔 Партнёр отклонил свидание.")
+
+@dp.callback_query(F.data.startswith("arrived_date_"))
+async def arrived_at_date(query: types.CallbackQuery, state: FSMContext):
+    date_id = int(query.data.split("_")[2])
+    user_id = query.from_user.id
+    
+    date_record = db.get_date(date_id)
+    if not date_record:
+        await query.answer("❌ Свидание не найдено")
+        return
+    
+    db.confirm_arrival(date_id, user_id)
+    
+    updated = db.get_date(date_id)
+    match = db.get_match_by_id(date_record['match_id'])
+    partner_id = match['user2_id'] if match['user1_id'] == user_id else match['user1_id']
+    
+    if updated['status'] == 'completed':
+        await query.message.answer("🎉 Оба на месте! Свидание состоялось! Приятного времяпровождения!")
+        await bot.send_message(partner_id, "🎉 Оба на месте! Свидание состоялось! Приятного времяпровождения!")
     else:
-        await query.answer("✅ Вы подтвердили, что на месте. Ожидаем подтверждения от партнёра")
+        await query.answer("✅ Вы отметились! Ожидаем партнёра.")
+        await bot.send_message(partner_id, "📍 Ваш партнёр уже на месте! Отметьтесь, когда придёте.", reply_markup=get_date_arrival_keyboard(date_id))
+
+# ===== Profile, Support, Delete =====
 
 @dp.message(MainMenuState.main_menu, F.text == "👤 Мой профиль")
 async def show_profile(message: types.Message, state: FSMContext):
@@ -1005,13 +1045,6 @@ async def show_profile(message: types.Message, state: FSMContext):
     text += f"💫 Интересы: {', '.join(interests)}"
     
     await message.answer(text)
-
-@dp.message(MainMenuState.main_menu, F.text == "⚙️ Настройки")
-async def settings(message: types.Message, state: FSMContext):
-    await message.answer(
-        "⚙️ Настройки:\n\n"
-        "Функция в разработке"
-    )
 
 @dp.message(MainMenuState.main_menu, F.text == "🔍 Просмотр фото")
 async def view_photos(message: types.Message, state: FSMContext):
@@ -1036,7 +1069,7 @@ async def edit_profile(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     user = db.get_user(user_id)
     
-    text = "📄 Отредактирование профиля\n\n"
+    text = "📄 Редактирование профиля\n\n"
     text += f"👤 Имя: {user['name']}\n"
     text += f"👨 Пол: {user['gender']}\n"
     text += f"🎂 Возраст: {user['age']}\n"
@@ -1051,35 +1084,54 @@ async def edit_profile(message: types.Message, state: FSMContext):
     )
     await state.set_state(MainMenuState.main_menu)
 
+# Support — просто ссылка на диалог с админом
 @dp.message(MainMenuState.main_menu, F.text == "📞 Поддержка")
 async def support(message: types.Message, state: FSMContext):
-    user_id = message.from_user.id
     await message.answer(
-        "📞 Поддержка\n\n"
-        "Напишите ваше сообщение администратору:"
+        f"📞 Поддержка\n\n"
+        f"Для связи с администратором нажмите на ссылку ниже:\n"
+        f"👉 [Написать админу](tg://user?id={ADMIN_ID})",
+        parse_mode="Markdown"
     )
-    await state.update_data(support_user_id=user_id)
-    await state.set_state(MainMenuState.in_support)
 
-@dp.message(MainMenuState.in_support)
-async def process_support_message(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    user_id = data.get('support_user_id')
-    user = db.get_user(user_id)
-    
-    # Send to admin
-    await bot.send_message(
-        ADMIN_ID,
-        f"📞 Новое сообщение от поддержки\n\n"
-        f"От: {user['name']} (ID: {user_id})\n"
-        f"Сообщение: {message.text}"
-    )
+# Удаление анкеты
+@dp.message(MainMenuState.main_menu, F.text == "🗑 Удалить анкету")
+async def delete_profile_prompt(message: types.Message, state: FSMContext):
+    builder = InlineKeyboardBuilder()
+    builder.button(text="✅ Да, удалить", callback_data="confirm_delete_profile")
+    builder.button(text="❌ Отмена", callback_data="cancel_delete_profile")
+    builder.adjust(2)
     
     await message.answer(
-        "✅ Сообщение отправлено администратору",
+        "⚠️ Вы уверены, что хотите удалить свою анкету?\n\n"
+        "Это действие необратимо. Все ваши данные, мэтчи, сообщения и оценки будут удалены.",
+        reply_markup=builder.as_markup()
+    )
+
+@dp.callback_query(F.data == "confirm_delete_profile")
+async def confirm_delete_profile(query: types.CallbackQuery, state: FSMContext):
+    user_id = query.from_user.id
+    success = db.delete_user(user_id)
+    
+    if success:
+        await state.clear()
+        await query.message.answer(
+            "✅ Ваша анкета удалена. Спасибо, что пользовались ЦИТРАМОН!\n\n"
+            "Чтобы создать новую анкету, напишите /start",
+            reply_markup=types.ReplyKeyboardRemove()
+        )
+    else:
+        await query.message.answer("❌ Ошибка при удалении. Попробуйте позже.")
+
+@dp.callback_query(F.data == "cancel_delete_profile")
+async def cancel_delete_profile(query: types.CallbackQuery, state: FSMContext):
+    user_id = query.from_user.id
+    await query.message.answer(
+        "✅ Удаление отменено.",
         reply_markup=get_main_menu_keyboard(user_id)
     )
-    await state.set_state(MainMenuState.main_menu)
+
+# ===== Admin handlers =====
 
 @dp.message(MainMenuState.main_menu, F.text == "🔧 Админ")
 async def admin_button(message: types.Message, state: FSMContext):
@@ -1093,7 +1145,6 @@ async def admin_button(message: types.Message, state: FSMContext):
     )
     await state.set_state(MainMenuState.in_admin)
 
-# Admin handlers
 @dp.message(MainMenuState.in_admin, F.text == "📋 Жалобы")
 async def show_complaints(message: types.Message, state: FSMContext):
     if message.from_user.id != ADMIN_ID:
@@ -1153,6 +1204,11 @@ async def manage_users(message: types.Message, state: FSMContext):
 
 @dp.message(MainMenuState.admin_search_user)
 async def search_user(message: types.Message, state: FSMContext):
+    if message.text == BACK_TEXT:
+        await message.answer("🔧 Админ-панель", reply_markup=get_admin_keyboard())
+        await state.set_state(MainMenuState.in_admin)
+        return
+    
     try:
         user_id = int(message.text.strip())
         user = db.get_user(user_id)
@@ -1234,11 +1290,16 @@ async def broadcast(message: types.Message, state: FSMContext):
         await message.answer("❌ У вас нет доступа")
         return
     
-    await message.answer("Введите текст рассылки:")
+    await message.answer("Введите текст рассылки (или ◀️ Назад для отмены):")
     await state.set_state(MainMenuState.admin_broadcast)
 
 @dp.message(MainMenuState.admin_broadcast)
 async def send_broadcast(message: types.Message, state: FSMContext):
+    if message.text == BACK_TEXT:
+        await message.answer("🔧 Админ-панель", reply_markup=get_admin_keyboard())
+        await state.set_state(MainMenuState.in_admin)
+        return
+    
     if message.from_user.id != ADMIN_ID:
         await message.answer("❌ У вас нет доступа")
         return
@@ -1260,7 +1321,7 @@ async def send_broadcast(message: types.Message, state: FSMContext):
     )
     await state.set_state(MainMenuState.in_admin)
 
-@dp.message(MainMenuState.in_admin, F.text == "◀️ Назад")
+@dp.message(MainMenuState.in_admin, F.text == BACK_TEXT)
 async def admin_back(message: types.Message, state: FSMContext):
     await message.answer(
         "Выберите действие:",
@@ -1268,43 +1329,7 @@ async def admin_back(message: types.Message, state: FSMContext):
     )
     await state.set_state(MainMenuState.main_menu)
 
-# Background tasks
-async def check_date_reminders():
-    """Check and send date reminders"""
-    while True:
-        try:
-            dates = db.get_upcoming_dates_for_reminder()
-            for date_record in dates:
-                match = db.get_match(date_record['user1_id'], date_record['user2_id'])
-                
-                partner1 = db.get_user(date_record['user1_id'])
-                partner2 = db.get_user(date_record['user2_id'])
-                
-                text = f"⏰ Напоминание о свидании!\n\n"
-                text += f"Встреча с {partner1['name']} в {date_record['proposed_date']}\n\n"
-                text += "Вы на месте?"
-                
-                await bot.send_message(
-                    date_record['user1_id'],
-                    text,
-                    reply_markup=get_date_confirmation_keyboard(date_record['date_id'])
-                )
-                
-                text = f"⏰ Напоминание о свидании!\n\n"
-                text += f"Встреча с {partner2['name']} в {date_record['proposed_date']}\n\n"
-                text += "Вы на месте?"
-                
-                await bot.send_message(
-                    date_record['user2_id'],
-                    text,
-                    reply_markup=get_date_confirmation_keyboard(date_record['date_id'])
-                )
-                
-                db.mark_reminder_sent(date_record['date_id'])
-        except Exception as e:
-            logger.error(f"Error in check_date_reminders: {e}")
-        
-        await asyncio.sleep(300)  # Check every 5 minutes
+# ===== Background tasks =====
 
 async def publish_ratings():
     """Publish ratings that are 24 hours old"""
@@ -1314,18 +1339,15 @@ async def publish_ratings():
         except Exception as e:
             logger.error(f"Error in publish_ratings: {e}")
         
-        await asyncio.sleep(3600)  # Check every hour
+        await asyncio.sleep(3600)
 
 async def main():
     """Main entry point"""
     logger.info(f"Starting {BOT_NAME} bot...")
     
     try:
-        # Create tasks for background jobs
-        asyncio.create_task(check_date_reminders())
         asyncio.create_task(publish_ratings())
         
-        # Start polling with error handling
         logger.info("Bot started successfully, polling for updates...")
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     except KeyboardInterrupt:

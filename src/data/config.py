@@ -42,7 +42,7 @@ COMPLAINT_TYPES = [
 ]
 
 # Limits
-MAX_PHOTOS = 3
+MAX_PHOTOS = 1
 MAX_BIO_LENGTH = 200
 MAX_NAME_LENGTH = 20
 MAX_INTERESTS = 5
@@ -54,6 +54,3 @@ NEWBIE_BOOST_HOURS = 48
 
 # Rating publication delay (in hours)
 RATING_PUBLICATION_DELAY_HOURS = 24
-
-# Reminder time before date (in minutes)
-DATE_REMINDER_MINUTES = 60

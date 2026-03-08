@@ -59,7 +59,7 @@ def init_db():
         )
     ''')
     
-    # Likes table (for tracking one-way likes)
+    # Likes table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS likes (
             like_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -88,17 +88,17 @@ def init_db():
         )
     ''')
     
-    # Dates table
+    # Dates table (proposed_date now optional)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS dates (
             date_id INTEGER PRIMARY KEY AUTOINCREMENT,
             match_id INTEGER NOT NULL,
             proposer_id INTEGER NOT NULL,
-            proposed_date TIMESTAMP NOT NULL,
+            proposed_date TIMESTAMP,
             status TEXT DEFAULT 'pending',
-            proposer_confirmed BOOLEAN DEFAULT 0,
-            other_confirmed BOOLEAN DEFAULT 0,
-            reminder_sent BOOLEAN DEFAULT 0,
+            accepted BOOLEAN DEFAULT 0,
+            proposer_arrived BOOLEAN DEFAULT 0,
+            other_arrived BOOLEAN DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (match_id) REFERENCES matches(match_id),
             FOREIGN KEY (proposer_id) REFERENCES users(user_id)
@@ -152,7 +152,7 @@ def init_db():
         )
     ''')
     
-    # Skips table (for tracking skipped profiles)
+    # Skips table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS skips (
             skip_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -213,6 +213,34 @@ class Database:
         finally:
             conn.close()
     
+    def delete_user(self, user_id: int) -> bool:
+        """Delete user and all related data from all tables."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute('DELETE FROM photos WHERE user_id = ?', (user_id,))
+            cursor.execute('DELETE FROM likes WHERE from_user_id = ? OR to_user_id = ?', (user_id, user_id))
+            cursor.execute('DELETE FROM skips WHERE from_user_id = ? OR to_user_id = ?', (user_id, user_id))
+            cursor.execute('DELETE FROM messages WHERE from_user_id = ? OR to_user_id = ?', (user_id, user_id))
+            cursor.execute('DELETE FROM ratings WHERE from_user_id = ? OR to_user_id = ?', (user_id, user_id))
+            cursor.execute('DELETE FROM complaints WHERE from_user_id = ? OR to_user_id = ?', (user_id, user_id))
+            cursor.execute('DELETE FROM user_states WHERE user_id = ?', (user_id,))
+            # Delete dates where user is proposer or part of match
+            cursor.execute('''
+                DELETE FROM dates WHERE match_id IN (
+                    SELECT match_id FROM matches WHERE user1_id = ? OR user2_id = ?
+                )
+            ''', (user_id, user_id))
+            cursor.execute('DELETE FROM matches WHERE user1_id = ? OR user2_id = ?', (user_id, user_id))
+            cursor.execute('DELETE FROM users WHERE user_id = ?', (user_id,))
+            conn.commit()
+            return True
+        except Exception:
+            conn.rollback()
+            return False
+        finally:
+            conn.close()
+    
     def get_user_by_name(self, name: str) -> Optional[dict]:
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -230,6 +258,16 @@ class Database:
                 INSERT INTO photos (user_id, file_id, photo_url)
                 VALUES (?, ?, ?)
             ''', (user_id, file_id, photo_url))
+            conn.commit()
+            return True
+        finally:
+            conn.close()
+    
+    def delete_user_photos(self, user_id: int) -> bool:
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute('DELETE FROM photos WHERE user_id = ?', (user_id,))
             conn.commit()
             return True
         finally:
@@ -294,7 +332,6 @@ class Database:
         conn = self.get_connection()
         cursor = conn.cursor()
         try:
-            # Ensure consistent order
             if user1_id > user2_id:
                 user1_id, user2_id = user2_id, user1_id
             cursor.execute('''
@@ -304,7 +341,6 @@ class Database:
             conn.commit()
             return cursor.lastrowid
         except sqlite3.IntegrityError:
-            # Match already exists
             cursor.execute('''
                 SELECT match_id FROM matches WHERE user1_id = ? AND user2_id = ?
             ''', (user1_id, user2_id))
@@ -348,6 +384,14 @@ class Database:
         if row:
             return row['user2_id'] if row['user1_id'] == user_id else row['user1_id']
         return None
+    
+    def get_match_by_id(self, match_id: int) -> Optional[dict]:
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM matches WHERE match_id = ?', (match_id,))
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row) if row else None
     
     # Skip operations
     def add_skip(self, from_user_id: int, to_user_id: int) -> bool:
@@ -400,17 +444,60 @@ class Database:
         conn.close()
         return [dict(row) for row in reversed(rows)]
     
-    # Date operations
-    def propose_date(self, match_id: int, proposer_id: int, proposed_date: datetime) -> Optional[int]:
+    # Date operations (simplified — no time input)
+    def propose_date(self, match_id: int, proposer_id: int) -> Optional[int]:
         conn = self.get_connection()
         cursor = conn.cursor()
         try:
             cursor.execute('''
-                INSERT INTO dates (match_id, proposer_id, proposed_date)
-                VALUES (?, ?, ?)
-            ''', (match_id, proposer_id, proposed_date.isoformat()))
+                INSERT INTO dates (match_id, proposer_id, status)
+                VALUES (?, ?, 'pending')
+            ''', (match_id, proposer_id))
             conn.commit()
             return cursor.lastrowid
+        finally:
+            conn.close()
+    
+    def accept_date(self, date_id: int) -> bool:
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute('''
+                UPDATE dates SET accepted = 1, status = 'accepted' WHERE date_id = ?
+            ''', (date_id,))
+            conn.commit()
+            return True
+        finally:
+            conn.close()
+    
+    def confirm_arrival(self, date_id: int, user_id: int) -> bool:
+        """Mark that a user arrived at the date."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            date_record = self.get_date(date_id)
+            if not date_record:
+                return False
+            
+            match = self.get_match_by_id(date_record['match_id'])
+            if not match:
+                return False
+            
+            if user_id == date_record['proposer_id']:
+                cursor.execute('UPDATE dates SET proposer_arrived = 1 WHERE date_id = ?', (date_id,))
+            else:
+                cursor.execute('UPDATE dates SET other_arrived = 1 WHERE date_id = ?', (date_id,))
+            
+            conn.commit()
+            
+            # Check if both arrived
+            cursor.execute('SELECT * FROM dates WHERE date_id = ?', (date_id,))
+            updated = dict(cursor.fetchone())
+            if updated['proposer_arrived'] and updated['other_arrived']:
+                cursor.execute("UPDATE dates SET status = 'completed' WHERE date_id = ?", (date_id,))
+                conn.commit()
+            
+            return True
         finally:
             conn.close()
     
@@ -421,7 +508,7 @@ class Database:
             SELECT d.*, m.user1_id, m.user2_id FROM dates d
             JOIN matches m ON d.match_id = m.match_id
             WHERE (m.user1_id = ? OR m.user2_id = ?) AND d.status = 'pending'
-            ORDER BY d.proposed_date
+            ORDER BY d.created_at
         ''', (user_id, user_id))
         rows = cursor.fetchall()
         conn.close()
@@ -434,62 +521,6 @@ class Database:
         row = cursor.fetchone()
         conn.close()
         return dict(row) if row else None
-    
-    def confirm_date_attendance(self, date_id: int, user_id: int) -> bool:
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        try:
-            date_record = self.get_date(date_id)
-            if not date_record:
-                return False
-            
-            if user_id == date_record['proposer_id']:
-                cursor.execute('''
-                    UPDATE dates SET proposer_confirmed = 1 WHERE date_id = ?
-                ''', (date_id,))
-            else:
-                cursor.execute('''
-                    UPDATE dates SET other_confirmed = 1 WHERE date_id = ?
-                ''', (date_id,))
-            
-            conn.commit()
-            
-            # Check if both confirmed
-            cursor.execute('SELECT * FROM dates WHERE date_id = ?', (date_id,))
-            updated = dict(cursor.fetchone())
-            if updated['proposer_confirmed'] and updated['other_confirmed']:
-                cursor.execute('''
-                    UPDATE dates SET status = 'confirmed' WHERE date_id = ?
-                ''', (date_id,))
-                conn.commit()
-            
-            return True
-        finally:
-            conn.close()
-    
-    def get_upcoming_dates_for_reminder(self) -> List[dict]:
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT * FROM dates WHERE status = 'confirmed' AND reminder_sent = 0
-            AND datetime(proposed_date) <= datetime('now', '+1 hour')
-            AND datetime(proposed_date) > datetime('now')
-        ''')
-        rows = cursor.fetchall()
-        conn.close()
-        return [dict(row) for row in rows]
-    
-    def mark_reminder_sent(self, date_id: int) -> bool:
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute('''
-                UPDATE dates SET reminder_sent = 1 WHERE date_id = ?
-            ''', (date_id,))
-            conn.commit()
-            return True
-        finally:
-            conn.close()
     
     # Rating operations
     def add_rating(self, date_id: int, from_user_id: int, to_user_id: int, 
@@ -540,7 +571,6 @@ class Database:
             conn.close()
     
     def publish_pending_ratings(self):
-        """Publish ratings that are 24 hours old"""
         conn = self.get_connection()
         cursor = conn.cursor()
         try:
@@ -549,8 +579,6 @@ class Database:
                 WHERE is_public = 0 AND datetime(created_at, '+1 day') <= datetime('now')
             ''')
             conn.commit()
-            
-            # Update all affected users' ratings
             cursor.execute('''
                 SELECT DISTINCT to_user_id FROM ratings WHERE is_public = 1
                 AND datetime(public_at) > datetime('now', '-1 day')
@@ -646,7 +674,7 @@ class Database:
         cursor.execute('SELECT COUNT(*) as count FROM matches')
         total_matches = cursor.fetchone()['count']
         
-        cursor.execute('SELECT COUNT(*) as count FROM dates WHERE status = "confirmed"')
+        cursor.execute('SELECT COUNT(*) as count FROM dates WHERE status = "completed"')
         confirmed_dates = cursor.fetchone()['count']
         
         cursor.execute('''
@@ -703,35 +731,25 @@ class Database:
 
     # Dating confirmation operations
     def confirm_dating_occurred(self, match_id: int, user_id: int) -> bool:
-        """Mark that a user confirmed the dating occurred"""
         conn = self.get_connection()
         cursor = conn.cursor()
         try:
-            # Get match info to determine which user confirmed
             cursor.execute('SELECT user1_id, user2_id FROM matches WHERE match_id = ?', (match_id,))
             match = cursor.fetchone()
-            
             if not match:
                 return False
-            
             if user_id == match['user1_id']:
-                cursor.execute('''
-                    UPDATE matches SET user1_confirmed = 1 WHERE match_id = ?
-                ''', (match_id,))
+                cursor.execute('UPDATE matches SET user1_confirmed = 1 WHERE match_id = ?', (match_id,))
             elif user_id == match['user2_id']:
-                cursor.execute('''
-                    UPDATE matches SET user2_confirmed = 1 WHERE match_id = ?
-                ''', (match_id,))
+                cursor.execute('UPDATE matches SET user2_confirmed = 1 WHERE match_id = ?', (match_id,))
             else:
                 return False
-            
             conn.commit()
             return True
         finally:
             conn.close()
     
     def is_dating_confirmed_by_both(self, match_id: int) -> bool:
-        """Check if both users confirmed the dating occurred"""
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute('''
@@ -739,14 +757,11 @@ class Database:
         ''', (match_id,))
         match = cursor.fetchone()
         conn.close()
-        
         if not match:
             return False
-        
         return match['user1_confirmed'] and match['user2_confirmed']
     
     def get_match_confirmation_status(self, match_id: int) -> dict:
-        """Get confirmation status for both users in a match"""
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute('''
@@ -754,10 +769,8 @@ class Database:
         ''', (match_id,))
         match = cursor.fetchone()
         conn.close()
-        
         if not match:
             return {}
-        
         return {
             'user1_id': match['user1_id'],
             'user2_id': match['user2_id'],
