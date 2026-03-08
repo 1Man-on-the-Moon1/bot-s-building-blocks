@@ -268,6 +268,7 @@ TEXTS = {
         'no_matches': '😔 You have no matches yet',
         'match_chat': '💬 Chat',
         'match_date': '📅 Date',
+        'match_view_profile': '👤 Profile',
         'match_reviews': '📝 Reviews',
 
         # Chat
