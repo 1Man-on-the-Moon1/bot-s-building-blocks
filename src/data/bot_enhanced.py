@@ -129,12 +129,13 @@ def get_admin_keyboard() -> ReplyKeyboardMarkup:
     builder.adjust(2)
     return builder.as_markup(resize_keyboard=True)
 
+# Feed keyboard: embed profile_user_id in callback_data for state-independent operation
 def get_feed_keyboard(user_id: int, profile_user_id: int) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text=t(user_id, 'feed_like'), callback_data="like_profile")
-    builder.button(text=t(user_id, 'feed_skip'), callback_data="skip_profile")
+    builder.button(text=t(user_id, 'feed_like'), callback_data=f"like_{profile_user_id}")
+    builder.button(text=t(user_id, 'feed_skip'), callback_data=f"skip_{profile_user_id}")
     builder.button(text=t(user_id, 'match_reviews'), callback_data=f"reviews_{profile_user_id}")
-    builder.button(text=t(user_id, 'feed_report'), callback_data="report_profile")
+    builder.button(text=t(user_id, 'feed_report'), callback_data=f"report_{profile_user_id}")
     builder.button(text=get_back_text(user_id), callback_data="feed_back")
     builder.adjust(2, 1, 1, 1)
     return builder.as_markup()
@@ -191,10 +192,22 @@ def get_negative_tags_keyboard(date_id: int, stars: int) -> InlineKeyboardMarkup
     builder.adjust(1)
     return builder.as_markup()
 
-def get_complaint_types_keyboard(to_user_id: int) -> InlineKeyboardMarkup:
+def get_complaint_types_keyboard(from_user_id: int, to_user_id: int) -> InlineKeyboardMarkup:
+    """Build complaint keyboard. 'Не пришёл на встречу' only shown if there was a completed date."""
     builder = InlineKeyboardBuilder()
+    has_date = db.has_completed_date_between(from_user_id, to_user_id)
     for complaint_type in COMPLAINT_TYPES:
+        # Only show "Не пришёл на встречу" if there was a completed date
+        if complaint_type == 'Не пришёл на встречу' and not has_date:
+            continue
         builder.button(text=complaint_type, callback_data=f"complaint_{to_user_id}_{complaint_type}")
+    builder.adjust(1)
+    return builder.as_markup()
+
+def get_reply_keyboard(user_id: int, match_id: int) -> InlineKeyboardMarkup:
+    """Inline keyboard with Reply button under incoming messages."""
+    builder = InlineKeyboardBuilder()
+    builder.button(text=t(user_id, 'chat_reply'), callback_data=f"chat_{match_id}")
     builder.adjust(1)
     return builder.as_markup()
 
@@ -633,21 +646,22 @@ async def show_feed(message: types.Message, state: FSMContext):
     
     await state.set_state(MainMenuState.browsing_feed)
 
-# Feed: Back button
-@dp.callback_query(MainMenuState.browsing_feed, F.data == "feed_back")
+# Feed: Back button (state-independent)
+@dp.callback_query(F.data == "feed_back")
 async def feed_back(query: types.CallbackQuery, state: FSMContext):
     user_id = query.from_user.id
     await query.message.answer(t(user_id, 'action_choose'), reply_markup=get_main_menu_keyboard(user_id))
     await state.set_state(MainMenuState.main_menu)
 
-@dp.callback_query(MainMenuState.browsing_feed, F.data == "like_profile")
+# Like profile (state-independent - works even after new messages)
+@dp.callback_query(F.data.regexp(r'^like_\d+$'))
 async def like_profile(query: types.CallbackQuery, state: FSMContext):
     user_id = query.from_user.id
-    data = await state.get_data()
-    to_user_id = data.get('current_profile_id')
+    to_user_id = int(query.data.split("_")[1])
     
-    if not to_user_id:
-        await query.answer(t(user_id, 'error'))
+    # Prevent double-like
+    if db.has_liked(user_id, to_user_id):
+        await query.answer("Already liked!")
         return
     
     db.add_like(user_id, to_user_id)
@@ -689,14 +703,13 @@ async def like_profile(query: types.CallbackQuery, state: FSMContext):
         await query.message.answer(t(user_id, 'feed_no_more'), reply_markup=get_main_menu_keyboard(user_id))
         await state.set_state(MainMenuState.main_menu)
 
-@dp.callback_query(MainMenuState.browsing_feed, F.data == "skip_profile")
+# Skip profile (state-independent)
+@dp.callback_query(F.data.regexp(r'^skip_\d+$'))
 async def skip_profile(query: types.CallbackQuery, state: FSMContext):
     user_id = query.from_user.id
-    data = await state.get_data()
-    to_user_id = data.get('current_profile_id')
+    to_user_id = int(query.data.split("_")[1])
     
-    if to_user_id:
-        db.add_skip(user_id, to_user_id)
+    db.add_skip(user_id, to_user_id)
     
     profile = get_next_profile_to_show(user_id)
     if profile:
@@ -716,20 +729,16 @@ async def skip_profile(query: types.CallbackQuery, state: FSMContext):
         await query.message.answer(t(user_id, 'feed_no_more'), reply_markup=get_main_menu_keyboard(user_id))
         await state.set_state(MainMenuState.main_menu)
 
-@dp.callback_query(MainMenuState.browsing_feed, F.data == "report_profile")
+# Report profile (state-independent)
+@dp.callback_query(F.data.regexp(r'^report_\d+$'))
 async def report_profile(query: types.CallbackQuery, state: FSMContext):
     user_id = query.from_user.id
-    data = await state.get_data()
-    to_user_id = data.get('current_profile_id')
-    
-    if not to_user_id:
-        await query.answer(t(user_id, 'error'))
-        return
+    to_user_id = int(query.data.split("_")[1])
     
     await state.update_data(report_user_id=to_user_id)
     await query.message.answer(
         t(user_id, 'complaint_choose'),
-        reply_markup=get_complaint_types_keyboard(to_user_id)
+        reply_markup=get_complaint_types_keyboard(user_id, to_user_id)
     )
 
 @dp.callback_query(F.data.startswith("complaint_"))
@@ -747,7 +756,7 @@ async def process_complaint(query: types.CallbackQuery, state: FSMContext):
     )
     await state.set_state(MainMenuState.main_menu)
 
-# ===== Reviews handler (works from feed AND match list) =====
+# ===== Reviews handler (works from ANY state - state-independent) =====
 
 @dp.callback_query(F.data.startswith("reviews_"))
 async def show_reviews(query: types.CallbackQuery, state: FSMContext):
@@ -832,7 +841,7 @@ async def show_matches(message: types.Message, state: FSMContext):
         
         await message.answer(text, reply_markup=get_match_keyboard(user_id, match['match_id'], partner_id))
 
-# ===== Chat with BACK button (stays in chat) =====
+# ===== Chat with BACK button + Reply button on incoming messages =====
 
 @dp.callback_query(F.data.startswith("chat_"))
 async def enter_chat(query: types.CallbackQuery, state: FSMContext):
@@ -885,9 +894,11 @@ async def send_chat_message(message: types.Message, state: FSMContext):
     db.send_message(match_id, user_id, to_user_id, message.text)
     
     sender = db.get_user(user_id)
+    # Send message to partner WITH Reply button
     await bot.send_message(
         to_user_id,
-        t(to_user_id, 'chat_new_msg', name=sender['name'], text=message.text)
+        t(to_user_id, 'chat_new_msg', name=sender['name'], text=message.text),
+        reply_markup=get_reply_keyboard(to_user_id, match_id)
     )
     
     # Stay in chat — show confirmation with back button
@@ -953,7 +964,6 @@ async def datetype_offline(query: types.CallbackQuery, state: FSMContext):
     user_id = query.from_user.id
     match_id = int(query.data.split("_")[2])
     
-    # Double-check no pending date
     if db.has_pending_date(match_id):
         await query.answer(t(user_id, 'date_already_pending'), show_alert=True)
         return
@@ -975,6 +985,8 @@ async def datetype_offline(query: types.CallbackQuery, state: FSMContext):
     )
     await state.set_state(MainMenuState.main_menu)
 
+# Accept / Decline / Arrival (state-independent)
+
 @dp.callback_query(F.data.startswith("accept_date_"))
 async def accept_date(query: types.CallbackQuery, state: FSMContext):
     user_id = query.from_user.id
@@ -988,10 +1000,10 @@ async def accept_date(query: types.CallbackQuery, state: FSMContext):
     db.accept_date(date_id)
     
     proposer_id = date_record['proposer_id']
-    is_online = date_record.get('date_type', 'offline') == 'online'
+    date_type = date_record.get('date_type', 'offline')
     
-    if is_online:
-        # Online date: suggest video call link exchange
+    if date_type == 'online':
+        # Online date: prompt to share video call link
         await query.message.answer(
             t(user_id, 'date_confirmed_online'),
             reply_markup=get_date_arrival_keyboard(user_id, date_id)
@@ -1585,6 +1597,8 @@ async def search_user(message: types.Message, state: FSMContext):
         builder.button(text="🚫 Заблокировать", callback_data=f"admin_ban_{user_id}")
         builder.button(text="👻 Теневой бан", callback_data=f"admin_shadow_ban_{user_id}")
         builder.button(text="⭐ Обнулить рейтинг", callback_data=f"admin_reset_rating_{user_id}")
+        builder.button(text="🔄 Обнулить анкету", callback_data=f"admin_full_reset_{user_id}")
+        builder.button(text="🔓 Разблокировать", callback_data=f"admin_unban_{user_id}")
         builder.adjust(1)
         
         await message.answer(text, reply_markup=builder.as_markup())
@@ -1618,6 +1632,29 @@ async def admin_reset_rating(query: types.CallbackQuery):
     user_id = int(query.data.split("_")[3])
     db.reset_user_rating(user_id)
     await query.answer("✅ Рейтинг обнулен")
+
+@dp.callback_query(F.data.startswith("admin_full_reset_"))
+async def admin_full_reset(query: types.CallbackQuery):
+    """Full profile reset: delete all ratings/reviews and reset rating to default."""
+    if query.from_user.id != ADMIN_ID:
+        return
+    
+    user_id = int(query.data.split("_")[3])
+    success = db.full_reset_user_profile(user_id)
+    if success:
+        await query.answer("✅ Анкета обнулена: рейтинг сброшен, все отзывы удалены")
+    else:
+        await query.answer("❌ Ошибка при обнулении анкеты")
+
+@dp.callback_query(F.data.startswith("admin_unban_"))
+async def admin_unban_user(query: types.CallbackQuery):
+    """Unban user (remove regular and shadow ban)."""
+    if query.from_user.id != ADMIN_ID:
+        return
+    
+    user_id = int(query.data.split("_")[2])
+    db.unban_user(user_id)
+    await query.answer("✅ Пользователь разблокирован")
 
 @dp.message(MainMenuState.in_admin, F.text == "📊 Статистика")
 async def show_stats(message: types.Message):
