@@ -10,7 +10,7 @@ def init_db():
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     
-    # Users table
+    # Users table (added language column)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
@@ -23,6 +23,7 @@ def init_db():
             interests TEXT,
             rating REAL DEFAULT 0.0,
             rating_count INTEGER DEFAULT 0,
+            language TEXT DEFAULT 'ru',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             is_banned BOOLEAN DEFAULT 0,
@@ -32,6 +33,18 @@ def init_db():
         )
     ''')
     
+    # Add language column if missing (migration for existing DBs)
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN language TEXT DEFAULT 'ru'")
+    except sqlite3.OperationalError:
+        pass  # column already exists
+    
+    # Add date_type column to dates if missing
+    try:
+        cursor.execute("ALTER TABLE dates ADD COLUMN date_type TEXT DEFAULT 'offline'")
+    except sqlite3.OperationalError:
+        pass
+
     # Photos table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS photos (
@@ -88,13 +101,14 @@ def init_db():
         )
     ''')
     
-    # Dates table (proposed_date now optional)
+    # Dates table (with date_type)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS dates (
             date_id INTEGER PRIMARY KEY AUTOINCREMENT,
             match_id INTEGER NOT NULL,
             proposer_id INTEGER NOT NULL,
             proposed_date TIMESTAMP,
+            date_type TEXT DEFAULT 'offline',
             status TEXT DEFAULT 'pending',
             accepted BOOLEAN DEFAULT 0,
             proposer_arrived BOOLEAN DEFAULT 0,
@@ -178,14 +192,14 @@ class Database:
         return conn
     
     # User operations
-    def create_user(self, user_id: int, name: str, gender: str, age: int, city: str) -> bool:
+    def create_user(self, user_id: int, name: str, gender: str, age: int, city: str, language: str = 'ru') -> bool:
         conn = self.get_connection()
         cursor = conn.cursor()
         try:
             cursor.execute('''
-                INSERT INTO users (user_id, name, gender, age, city, rating)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (user_id, name, gender, age, city, 5.0))
+                INSERT INTO users (user_id, name, gender, age, city, rating, language)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (user_id, name, gender, age, city, 5.0, language))
             conn.commit()
             return True
         except sqlite3.IntegrityError:
@@ -225,7 +239,6 @@ class Database:
             cursor.execute('DELETE FROM ratings WHERE from_user_id = ? OR to_user_id = ?', (user_id, user_id))
             cursor.execute('DELETE FROM complaints WHERE from_user_id = ? OR to_user_id = ?', (user_id, user_id))
             cursor.execute('DELETE FROM user_states WHERE user_id = ?', (user_id,))
-            # Delete dates where user is proposer or part of match
             cursor.execute('''
                 DELETE FROM dates WHERE match_id IN (
                     SELECT match_id FROM matches WHERE user1_id = ? OR user2_id = ?
@@ -444,15 +457,15 @@ class Database:
         conn.close()
         return [dict(row) for row in reversed(rows)]
     
-    # Date operations (simplified — no time input)
-    def propose_date(self, match_id: int, proposer_id: int) -> Optional[int]:
+    # Date operations (with date_type)
+    def propose_date(self, match_id: int, proposer_id: int, date_type: str = 'offline') -> Optional[int]:
         conn = self.get_connection()
         cursor = conn.cursor()
         try:
             cursor.execute('''
-                INSERT INTO dates (match_id, proposer_id, status)
-                VALUES (?, ?, 'pending')
-            ''', (match_id, proposer_id))
+                INSERT INTO dates (match_id, proposer_id, date_type, status)
+                VALUES (?, ?, ?, 'pending')
+            ''', (match_id, proposer_id, date_type))
             conn.commit()
             return cursor.lastrowid
         finally:
@@ -518,6 +531,18 @@ class Database:
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM dates WHERE date_id = ?', (date_id,))
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row) if row else None
+
+    def get_completed_date_for_match(self, match_id: int) -> Optional[dict]:
+        """Get the most recent completed date for a match."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT * FROM dates WHERE match_id = ? AND status = 'completed'
+            ORDER BY created_at DESC LIMIT 1
+        ''', (match_id,))
         row = cursor.fetchone()
         conn.close()
         return dict(row) if row else None
