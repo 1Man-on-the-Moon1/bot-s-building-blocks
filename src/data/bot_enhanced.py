@@ -857,6 +857,30 @@ async def show_reviews(query: types.CallbackQuery, state: FSMContext):
     
     await query.message.answer(text)
 
+# ===== View partner profile from matches (state-independent) =====
+
+@dp.callback_query(F.data.regexp(r'^viewprofile_\d+$'))
+async def view_partner_profile(query: types.CallbackQuery, state: FSMContext):
+    """Show full profile of a match partner."""
+    user_id = query.from_user.id
+    partner_id = int(query.data.split("_")[1])
+    partner = db.get_user(partner_id)
+    
+    if not partner:
+        await query.answer(t(user_id, 'profile_not_found'))
+        return
+    
+    photos = db.get_user_photos(partner_id)
+    caption = build_profile_caption(partner, user_id)
+    
+    if photos:
+        await query.message.answer_photo(
+            photo=photos[0]['file_id'],
+            caption=caption
+        )
+    else:
+        await query.message.answer(caption)
+
 # ===== Matches =====
 
 @dp.message(MainMenuState.main_menu, lambda m: m.text and any(
