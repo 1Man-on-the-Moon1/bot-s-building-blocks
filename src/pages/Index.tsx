@@ -7,7 +7,7 @@ const files = [
   { name: "config.py", path: "/src/data/config.py", desc: "Конфигурация бота" },
   { name: "database.py", path: "/src/data/database.py", desc: "Работа с базой данных" },
   { name: "i18n.py", path: "/src/data/i18n.py", desc: "Модуль локализации (RU/EN)" },
-  { name: ".env", path: "/src/data/.env", desc: "Шаблон файла окружения (.env)" },
+  { name: ".env", path: "/src/data/env.txt", desc: "Файл окружения (переименуйте в .env)" },
 ];
 
 const changeLog = [
