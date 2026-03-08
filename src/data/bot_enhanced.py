@@ -1638,10 +1638,8 @@ async def search_user(message: types.Message, state: FSMContext):
         
         builder = InlineKeyboardBuilder()
         builder.button(text="🚫 Заблокировать", callback_data=f"admin_ban_{user_id}")
-        builder.button(text="👻 Теневой бан", callback_data=f"admin_shadow_ban_{user_id}")
-        builder.button(text="⭐ Обнулить рейтинг", callback_data=f"admin_reset_rating_{user_id}")
-        builder.button(text="🔄 Обнулить анкету", callback_data=f"admin_full_reset_{user_id}")
         builder.button(text="🔓 Разблокировать", callback_data=f"admin_unban_{user_id}")
+        builder.button(text="🔄 Обнулить анкету", callback_data=f"admin_full_reset_{user_id}")
         builder.adjust(1)
         
         await message.answer(text, reply_markup=builder.as_markup())
