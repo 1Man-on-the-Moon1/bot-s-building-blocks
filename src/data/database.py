@@ -2,15 +2,23 @@ import sqlite3
 from datetime import datetime
 from typing import Optional, List
 import json
+from collections import Counter
 
 DATABASE_PATH = "vibestar.db"
+
+# Rating configuration (imported from config if available, fallback defaults)
+try:
+    from config import RATING_PRIOR_WEIGHT, RATING_PRIOR_VALUE
+except ImportError:
+    RATING_PRIOR_WEIGHT = 2
+    RATING_PRIOR_VALUE = 5.0
 
 def init_db():
     """Initialize the database with all required tables."""
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     
-    # Users table (added language column)
+    # Users table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
@@ -21,7 +29,7 @@ def init_db():
             city TEXT NOT NULL,
             bio TEXT,
             interests TEXT,
-            rating REAL DEFAULT 0.0,
+            rating REAL DEFAULT 5.0,
             rating_count INTEGER DEFAULT 0,
             language TEXT DEFAULT 'ru',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -37,7 +45,7 @@ def init_db():
     try:
         cursor.execute("ALTER TABLE users ADD COLUMN language TEXT DEFAULT 'ru'")
     except sqlite3.OperationalError:
-        pass  # column already exists
+        pass
     
     # Add date_type column to dates if missing
     try:
@@ -130,7 +138,7 @@ def init_db():
             positive_tags TEXT,
             negative_tags TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            is_public BOOLEAN DEFAULT 0,
+            is_public BOOLEAN DEFAULT 1,
             public_at TIMESTAMP,
             FOREIGN KEY (date_id) REFERENCES dates(date_id),
             FOREIGN KEY (from_user_id) REFERENCES users(user_id),
@@ -199,7 +207,7 @@ class Database:
             cursor.execute('''
                 INSERT INTO users (user_id, name, gender, age, city, rating, language)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (user_id, name, gender, age, city, 5.0, language))
+            ''', (user_id, name, gender, age, city, RATING_PRIOR_VALUE, language))
             conn.commit()
             return True
         except sqlite3.IntegrityError:
@@ -471,6 +479,17 @@ class Database:
         finally:
             conn.close()
     
+    def has_pending_date(self, match_id: int) -> bool:
+        """Check if there's already a pending or accepted date for this match."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT 1 FROM dates WHERE match_id = ? AND status IN ('pending', 'accepted')
+        ''', (match_id,))
+        result = cursor.fetchone()
+        conn.close()
+        return result is not None
+    
     def accept_date(self, date_id: int) -> bool:
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -556,10 +575,12 @@ class Database:
             positive_str = json.dumps(positive_tags) if positive_tags else None
             negative_str = json.dumps(negative_tags) if negative_tags else None
             cursor.execute('''
-                INSERT INTO ratings (date_id, from_user_id, to_user_id, stars, positive_tags, negative_tags)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO ratings (date_id, from_user_id, to_user_id, stars, positive_tags, negative_tags, is_public, public_at)
+                VALUES (?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
             ''', (date_id, from_user_id, to_user_id, stars, positive_str, negative_str))
             conn.commit()
+            # Immediately update the user's rating
+            self.update_user_rating(to_user_id)
             return True
         except sqlite3.IntegrityError:
             return False
@@ -567,46 +588,97 @@ class Database:
             conn.close()
     
     def get_user_ratings(self, user_id: int) -> List[dict]:
+        """Get all public ratings for a user."""
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT * FROM ratings WHERE to_user_id = ? AND is_public = 1
-            ORDER BY created_at DESC
+            SELECT r.*, u.name as reviewer_name FROM ratings r
+            LEFT JOIN users u ON r.from_user_id = u.user_id
+            WHERE r.to_user_id = ? AND r.is_public = 1
+            ORDER BY r.created_at DESC
         ''', (user_id,))
         rows = cursor.fetchall()
         conn.close()
         return [dict(row) for row in rows]
     
+    def get_user_reviews_summary(self, user_id: int) -> dict:
+        """Get a summary of all reviews for a user."""
+        ratings = self.get_user_ratings(user_id)
+        if not ratings:
+            return {'count': 0, 'avg': 0.0, 'positive_tags': [], 'negative_tags': [], 'ratings': []}
+        
+        total_stars = sum(r['stars'] for r in ratings)
+        count = len(ratings)
+        avg = total_stars / count if count > 0 else 0.0
+        
+        # Aggregate tags
+        pos_counter = Counter()
+        neg_counter = Counter()
+        for r in ratings:
+            if r['positive_tags']:
+                try:
+                    tags = json.loads(r['positive_tags'])
+                    if isinstance(tags, str):
+                        tags = json.loads(tags)
+                    pos_counter.update(tags)
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            if r['negative_tags']:
+                try:
+                    tags = json.loads(r['negative_tags'])
+                    if isinstance(tags, str):
+                        tags = json.loads(tags)
+                    neg_counter.update(tags)
+                except (json.JSONDecodeError, TypeError):
+                    pass
+        
+        return {
+            'count': count,
+            'avg': avg,
+            'positive_tags': pos_counter.most_common(5),
+            'negative_tags': neg_counter.most_common(5),
+            'ratings': ratings
+        }
+    
     def update_user_rating(self, user_id: int):
+        """Update user rating using Bayesian average."""
         conn = self.get_connection()
         cursor = conn.cursor()
         try:
             cursor.execute('''
-                SELECT AVG(stars) as avg_rating, COUNT(*) as count FROM ratings
-                WHERE to_user_id = ? AND is_public = 1
+                SELECT stars FROM ratings WHERE to_user_id = ? AND is_public = 1
             ''', (user_id,))
-            result = cursor.fetchone()
-            avg_rating = result['avg_rating'] or 0.0
-            count = result['count'] or 0
+            rows = cursor.fetchall()
+            count = len(rows)
+            
+            if count == 0:
+                # No ratings yet, keep prior
+                bayesian_rating = RATING_PRIOR_VALUE
+            else:
+                total_stars = sum(row['stars'] for row in rows)
+                # Bayesian average: (prior_weight * prior_value + sum_stars) / (prior_weight + count)
+                bayesian_rating = (RATING_PRIOR_WEIGHT * RATING_PRIOR_VALUE + total_stars) / (RATING_PRIOR_WEIGHT + count)
+            
             cursor.execute('''
                 UPDATE users SET rating = ?, rating_count = ? WHERE user_id = ?
-            ''', (avg_rating, count, user_id))
+            ''', (bayesian_rating, count, user_id))
             conn.commit()
         finally:
             conn.close()
     
     def publish_pending_ratings(self):
+        """Publish any remaining unpublished ratings (legacy support)."""
         conn = self.get_connection()
         cursor = conn.cursor()
         try:
             cursor.execute('''
                 UPDATE ratings SET is_public = 1, public_at = CURRENT_TIMESTAMP
-                WHERE is_public = 0 AND datetime(created_at, '+1 day') <= datetime('now')
+                WHERE is_public = 0
             ''')
             conn.commit()
+            # Update ratings for affected users
             cursor.execute('''
                 SELECT DISTINCT to_user_id FROM ratings WHERE is_public = 1
-                AND datetime(public_at) > datetime('now', '-1 day')
             ''')
             users = cursor.fetchall()
             for user in users:
@@ -739,8 +811,8 @@ class Database:
         cursor = conn.cursor()
         try:
             cursor.execute('''
-                UPDATE users SET rating = 0.0, rating_count = 0 WHERE user_id = ?
-            ''', (user_id,))
+                UPDATE users SET rating = ?, rating_count = 0 WHERE user_id = ?
+            ''', (RATING_PRIOR_VALUE, user_id))
             conn.commit()
             return True
         finally:

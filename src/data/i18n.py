@@ -1,4 +1,4 @@
-# Internationalization module for ЦИТРАМОН bot
+# Internationalization module for CITRAMON DATING bot
 # All bot messages and button labels in Russian and English
 
 TEXTS = {
@@ -14,8 +14,8 @@ TEXTS = {
         'lang_en': '🇬🇧 English',
 
         # Registration
-        'welcome_new': '👋 Добро пожаловать в ЦИТРАМОН - приложение для знакомств в Беларуси!\n\nДавайте создадим вашу анкету. Как вас зовут? (максимум 20 символов)\n\nДля отмены нажмите ◀️ Назад',
-        'welcome_back': '👋 Добро пожаловать в ЦИТРАМОН!\n\nВыберите действие:',
+        'welcome_new': '👋 Добро пожаловать в CITRAMON DATING — приложение для знакомств в Беларуси!\n\nДавайте создадим вашу анкету. Как вас зовут? (максимум 20 символов)\n\nДля отмены нажмите ◀️ Назад',
+        'welcome_back': '👋 Добро пожаловать в CITRAMON DATING!\n\nВыберите действие:',
         'reg_cancelled': 'Регистрация отменена. Напишите /start чтобы начать заново.',
         'enter_name': 'Как вас зовут? (максимум 20 символов)',
         'name_no_commands': '❌ Пожалуйста, введите ваше имя (текст без команд).',
@@ -47,7 +47,7 @@ TEXTS = {
         'interests_min': '❌ Выберите хотя бы один интерес',
         'interests_max': '❌ Максимум {max} интересов',
         'interests_done': '✅ Готово',
-        'reg_complete': '✅ Ваша анкета создана!\n\nДобро пожаловать в ЦИТРАМОН! 🎉',
+        'reg_complete': '✅ Ваша анкета создана!\n\nДобро пожаловать в CITRAMON DATING! 🎉',
 
         # Main menu
         'menu_feed': '❤️ Лента анкет',
@@ -76,13 +76,13 @@ TEXTS = {
         'no_matches': '😔 У вас пока нет мэтчей',
         'match_chat': '💬 Чат',
         'match_date': '📅 Свидание',
-        'match_rate': '⭐ Оценить',
+        'match_reviews': '📝 Отзывы',
 
         # Chat
         'chat_history': '💬 История сообщений:\n\n',
         'chat_empty': '💬 Нет сообщений. Начните разговор!\n\n',
         'chat_send_prompt': '\nОтправьте сообщение (или нажмите ◀️ Назад):',
-        'chat_msg_sent': '✅ Сообщение отправлено!',
+        'chat_msg_sent': '✅ Сообщение отправлено!\n\nМожете продолжить общение или нажмите ◀️ Назад.',
         'chat_new_msg': '💬 Новое сообщение от {name}:\n\n{text}',
 
         # Date flow
@@ -92,10 +92,13 @@ TEXTS = {
         'date_proposed_online': '📱 {name} предлагает ОНЛАЙН свидание!\n\nПодтвердите или отклоните.',
         'date_proposed_offline': '🌟 {name} предлагает ОФЛАЙН свидание!\n\nПодтвердите или отклоните.',
         'date_sent': '✅ Приглашение на свидание отправлено! Ожидаем подтверждения.',
+        'date_already_pending': '⏳ У вас уже есть активное приглашение с этим пользователем. Дождитесь ответа.',
         'date_accept': '✅ Подтвердить свидание',
         'date_decline': '❌ Отклонить',
         'date_confirmed': '✅ Свидание подтверждено! Когда будете на месте, нажмите кнопку.',
         'date_confirmed_proposer': '✅ Партнёр подтвердил свидание! Когда будете на месте, нажмите кнопку.',
+        'date_confirmed_online': '✅ Онлайн-свидание подтверждено!\n\n📱 Обменяйтесь ссылкой на видеозвонок:\n• Zoom\n• Яндекс Телемост\n• Google Meet\n\nОтправьте ссылку партнёру в чат, затем нажмите кнопку «Я на месте» когда будете готовы.',
+        'date_confirmed_online_proposer': '✅ Партнёр подтвердил онлайн-свидание!\n\n📱 Обменяйтесь ссылкой на видеозвонок:\n• Zoom\n• Яндекс Телемост\n• Google Meet\n\nОтправьте ссылку партнёру в чат, затем нажмите кнопку «Я на месте» когда будете готовы.',
         'date_declined_you': '❌ Вы отклонили свидание.',
         'date_declined_partner': '😔 Партнёр отклонил свидание.',
         'date_arrived': '✅ Я на месте',
@@ -109,15 +112,23 @@ TEXTS = {
         # Rating
         'rate_positive': '😊 Выберите положительные качества:',
         'rate_negative': '😮 Выберите отрицательные качества:',
-        'rate_saved': '✅ Оценка сохранена!',
+        'rate_saved': '✅ Оценка сохранена! Рейтинг партнёра обновлён.',
         'rate_done': '✅ Готово',
+
+        # Reviews
+        'reviews_title': '📝 Отзывы о {name}\n\n',
+        'reviews_empty': '📝 Пока нет отзывов о этом пользователе.',
+        'reviews_summary': '⭐ Средний рейтинг: {rating:.1f} ({count} отзывов)\n\n',
+        'reviews_positive_summary': '✅ Чаще отмечают: {tags}\n',
+        'reviews_negative_summary': '❌ Замечания: {tags}\n',
+        'reviews_item': '⭐ {stars}/5 — {positive}{negative}\n',
 
         # Profile
         'profile_title': '👤 Ваш профиль\n\n',
         'profile_name': 'Имя: {name}\n',
         'profile_age': 'Возраст: {age}\n',
         'profile_city': 'Город: {city}\n',
-        'profile_rating': '⭐ Рейтинг: {rating:.1f}\n\n',
+        'profile_rating': '⭐ Рейтинг: {rating:.1f} ({count} оценок)\n\n',
         'profile_bio': '📝 О себе: {bio}\n\n',
         'profile_interests': '💫 Интересы: {interests}',
         'profile_not_found': '❌ Профиль не найден',
@@ -143,7 +154,7 @@ TEXTS = {
         'delete_confirm': '⚠️ Вы уверены, что хотите удалить свою анкету?\n\nЭто действие необратимо. Все ваши данные, мэтчи, сообщения и оценки будут удалены.',
         'delete_yes': '✅ Да, удалить',
         'delete_no': '❌ Отмена',
-        'delete_done': '✅ Ваша анкета удалена. Спасибо, что пользовались ЦИТРАМОН!\n\nЧтобы создать новую анкету, напишите /start',
+        'delete_done': '✅ Ваша анкета удалена. Спасибо, что пользовались CITRAMON DATING!\n\nЧтобы создать новую анкету, напишите /start',
         'delete_error': '❌ Ошибка при удалении. Попробуйте позже.',
         'delete_cancelled': '✅ Удаление отменено.',
 
@@ -189,8 +200,8 @@ TEXTS = {
         'lang_en': '🇬🇧 English',
 
         # Registration
-        'welcome_new': '👋 Welcome to ЦИТРАМОН - a dating app in Belarus!\n\nLet\'s create your profile. What is your name? (max 20 characters)\n\nPress ◀️ Back to cancel',
-        'welcome_back': '👋 Welcome to ЦИТРАМОН!\n\nChoose an action:',
+        'welcome_new': '👋 Welcome to CITRAMON DATING — a dating app in Belarus!\n\nLet\'s create your profile. What is your name? (max 20 characters)\n\nPress ◀️ Back to cancel',
+        'welcome_back': '👋 Welcome to CITRAMON DATING!\n\nChoose an action:',
         'reg_cancelled': 'Registration cancelled. Type /start to begin again.',
         'enter_name': 'What is your name? (max 20 characters)',
         'name_no_commands': '❌ Please enter your name (text without commands).',
@@ -222,7 +233,7 @@ TEXTS = {
         'interests_min': '❌ Choose at least one interest',
         'interests_max': '❌ Maximum {max} interests',
         'interests_done': '✅ Done',
-        'reg_complete': '✅ Your profile is created!\n\nWelcome to ЦИТРАМОН! 🎉',
+        'reg_complete': '✅ Your profile is created!\n\nWelcome to CITRAMON DATING! 🎉',
 
         # Main menu
         'menu_feed': '❤️ Browse profiles',
@@ -251,13 +262,13 @@ TEXTS = {
         'no_matches': '😔 You have no matches yet',
         'match_chat': '💬 Chat',
         'match_date': '📅 Date',
-        'match_rate': '⭐ Rate',
+        'match_reviews': '📝 Reviews',
 
         # Chat
         'chat_history': '💬 Message history:\n\n',
         'chat_empty': '💬 No messages. Start a conversation!\n\n',
         'chat_send_prompt': '\nSend a message (or press ◀️ Back):',
-        'chat_msg_sent': '✅ Message sent!',
+        'chat_msg_sent': '✅ Message sent!\n\nYou can continue chatting or press ◀️ Back.',
         'chat_new_msg': '💬 New message from {name}:\n\n{text}',
 
         # Date flow
@@ -267,10 +278,13 @@ TEXTS = {
         'date_proposed_online': '📱 {name} invites you to an ONLINE date!\n\nAccept or decline.',
         'date_proposed_offline': '🌟 {name} invites you to an OFFLINE date!\n\nAccept or decline.',
         'date_sent': '✅ Date invitation sent! Waiting for confirmation.',
+        'date_already_pending': '⏳ You already have a pending invitation with this user. Please wait for a response.',
         'date_accept': '✅ Accept date',
         'date_decline': '❌ Decline',
         'date_confirmed': '✅ Date confirmed! Press the button when you arrive.',
         'date_confirmed_proposer': '✅ Partner confirmed the date! Press the button when you arrive.',
+        'date_confirmed_online': '✅ Online date confirmed!\n\n📱 Share a video call link with your partner:\n• Zoom\n• Yandex Telemost\n• Google Meet\n\nSend the link in chat, then press "I\'m here" when you\'re ready.',
+        'date_confirmed_online_proposer': '✅ Partner confirmed the online date!\n\n📱 Share a video call link with your partner:\n• Zoom\n• Yandex Telemost\n• Google Meet\n\nSend the link in chat, then press "I\'m here" when you\'re ready.',
         'date_declined_you': '❌ You declined the date.',
         'date_declined_partner': '😔 Partner declined the date.',
         'date_arrived': '✅ I\'m here',
@@ -284,15 +298,23 @@ TEXTS = {
         # Rating
         'rate_positive': '😊 Choose positive qualities:',
         'rate_negative': '😮 Choose negative qualities:',
-        'rate_saved': '✅ Rating saved!',
+        'rate_saved': '✅ Rating saved! Partner\'s rating updated.',
         'rate_done': '✅ Done',
+
+        # Reviews
+        'reviews_title': '📝 Reviews for {name}\n\n',
+        'reviews_empty': '📝 No reviews for this user yet.',
+        'reviews_summary': '⭐ Average rating: {rating:.1f} ({count} reviews)\n\n',
+        'reviews_positive_summary': '✅ Often noted: {tags}\n',
+        'reviews_negative_summary': '❌ Issues: {tags}\n',
+        'reviews_item': '⭐ {stars}/5 — {positive}{negative}\n',
 
         # Profile
         'profile_title': '👤 Your profile\n\n',
         'profile_name': 'Name: {name}\n',
         'profile_age': 'Age: {age}\n',
         'profile_city': 'City: {city}\n',
-        'profile_rating': '⭐ Rating: {rating:.1f}\n\n',
+        'profile_rating': '⭐ Rating: {rating:.1f} ({count} reviews)\n\n',
         'profile_bio': '📝 About: {bio}\n\n',
         'profile_interests': '💫 Interests: {interests}',
         'profile_not_found': '❌ Profile not found',
@@ -318,7 +340,7 @@ TEXTS = {
         'delete_confirm': '⚠️ Are you sure you want to delete your profile?\n\nThis action is irreversible. All your data, matches, messages and ratings will be deleted.',
         'delete_yes': '✅ Yes, delete',
         'delete_no': '❌ Cancel',
-        'delete_done': '✅ Your profile is deleted. Thanks for using ЦИТРАМОН!\n\nTo create a new profile, type /start',
+        'delete_done': '✅ Your profile is deleted. Thanks for using CITRAMON DATING!\n\nTo create a new profile, type /start',
         'delete_error': '❌ Error deleting. Try later.',
         'delete_cancelled': '✅ Deletion cancelled.',
 
