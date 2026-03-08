@@ -5,8 +5,14 @@ load_dotenv()
 
 # Bot configuration
 BOT_NAME = 'ЦИТРАМОН'
-BOT_TOKEN = os.getenv('BOT_TOKEN', '8611752604:AAFH3iCc_0X6bWXa1jP9fqjLJm0s48vdE4Q')
-ADMIN_ID = int(os.getenv('ADMIN_ID', '783321437'))
+BOT_TOKEN = os.getenv('BOT_TOKEN')
+ADMIN_ID = int(os.getenv('ADMIN_ID', '0'))
+
+if not BOT_TOKEN:
+    raise ValueError("BOT_TOKEN is not set! Create a .env file with BOT_TOKEN=your_token")
+
+if ADMIN_ID == 0:
+    raise ValueError("ADMIN_ID is not set! Create a .env file with ADMIN_ID=your_telegram_id")
 
 # Constants
 BELARUS_CITIES = ['Минск', 'Брест', 'Витебск', 'Гомель', 'Гродно', 'Могилёв']
@@ -37,8 +43,7 @@ NEGATIVE_TAGS = [
 
 COMPLAINT_TYPES = [
     'Не пришёл на встречу',
-    'Фейк',
-    'Агрессия'
+    'Фейк'
 ]
 
 # Limits
