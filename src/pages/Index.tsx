@@ -6,14 +6,19 @@ const files = [
   { name: "bot_enhanced.py", path: "/src/data/bot_enhanced.py", desc: "Основной файл бота (все хэндлеры)" },
   { name: "config.py", path: "/src/data/config.py", desc: "Конфигурация бота" },
   { name: "database.py", path: "/src/data/database.py", desc: "Работа с базой данных" },
+  { name: "i18n.py", path: "/src/data/i18n.py", desc: "Модуль локализации (RU/EN)" },
+  { name: ".env", path: "/src/data/.env", desc: "Шаблон файла окружения (.env)" },
 ];
 
 const changeLog = [
-  { icon: "📞", title: "Поддержка", desc: "Теперь открывает прямой диалог с админом через ссылку" },
-  { icon: "◀️", title: "Кнопка Назад", desc: "Добавлена на каждый этап регистрации, в чат, ленту, админку" },
-  { icon: "📅", title: "Свидания", desc: "Упрощено: назначить → подтвердить → оба отмечаются на месте" },
-  { icon: "🗑", title: "Удаление анкеты", desc: "Новая кнопка в меню с подтверждением и каскадным удалением" },
-  { icon: "📷", title: "Одно фото", desc: "MAX_PHOTOS = 1, автопереход к био после загрузки" },
+  { icon: "✏️", title: "Редактирование профиля", desc: "Полноценное меню: имя, возраст, город, био, фото, интересы" },
+  { icon: "🌐", title: "Выбор языка", desc: "RU / EN при регистрации и в меню. Все сообщения бота переведены" },
+  { icon: "📅", title: "Свидания v2", desc: "Предложить → Онлайн/Офлайн → уведомление партнёру" },
+  { icon: "🎉", title: "Свидание состоялось", desc: "Автоматически при нажатии 'Я на месте' обоими. Открывается отзыв" },
+  { icon: "⭐", title: "Отзыв после свидания", desc: "Исправлена логика: отзыв привязан к date_id, работает корректно" },
+  { icon: "🗑", title: "Удалена 'Агрессия'", desc: "Убрана из типов жалоб" },
+  { icon: "🔐", title: ".env файл", desc: "Токен и ADMIN_ID только через переменные окружения" },
+  { icon: "💬", title: "Чат улучшен", desc: "Убрана кнопка 'Свидание состоялось' из чата" },
 ];
 
 const Index = () => {
@@ -50,10 +55,10 @@ const Index = () => {
       <div className="max-w-2xl mx-auto space-y-8">
         <div className="text-center space-y-2">
           <h1 className="text-4xl font-bold tracking-tight text-foreground">
-            💊 ЦИТРАМОН — обновлённые файлы
+            💊 ЦИТРАМОН — обновлённые файлы v2
           </h1>
           <p className="text-muted-foreground">
-            Скачайте изменённые файлы бота и замените их в своём проекте
+            Скачайте все файлы бота и замените их в своём проекте
           </p>
         </div>
 
@@ -97,6 +102,23 @@ const Index = () => {
             ⬇️ Скачать все файлы
           </Button>
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">📝 Инструкция</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm text-muted-foreground">
+            <p>1. Скачайте все файлы</p>
+            <p>2. Создайте файл <code className="bg-muted px-1 rounded">.env</code> в корне проекта:</p>
+            <pre className="bg-muted p-3 rounded text-xs">
+{`BOT_TOKEN=ваш_токен_от_BotFather
+ADMIN_ID=ваш_telegram_id`}
+            </pre>
+            <p>3. <code>pip install aiogram python-dotenv</code></p>
+            <p>4. <code>python bot_enhanced.py</code></p>
+            <p>5. При первом запуске удалите старый <code>vibestar.db</code></p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
