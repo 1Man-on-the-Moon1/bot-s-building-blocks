@@ -646,6 +646,36 @@ async def show_feed(message: types.Message, state: FSMContext):
     
     await state.set_state(MainMenuState.browsing_feed)
 
+# ===== Allow menu buttons while browsing feed =====
+@dp.message(MainMenuState.browsing_feed, lambda m: m.text and is_menu_button(m.from_user.id, m.text))
+async def menu_from_feed(message: types.Message, state: FSMContext):
+    """Allow user to pick any menu action without leaving the feed first."""
+    user_id = message.from_user.id
+    await state.set_state(MainMenuState.main_menu)
+    # Re-dispatch: set state to main_menu and re-process the message
+    # We call the appropriate handler directly based on the text
+    text = message.text
+    if text == t(user_id, 'menu_matches'):
+        await show_matches(message, state)
+    elif text == t(user_id, 'menu_profile'):
+        await show_profile(message, state)
+    elif text == t(user_id, 'menu_photos'):
+        await view_photos(message, state)
+    elif text == t(user_id, 'menu_edit'):
+        await edit_profile(message, state)
+    elif text == t(user_id, 'menu_support'):
+        await support(message, state)
+    elif text == t(user_id, 'menu_delete'):
+        await delete_profile_prompt(message, state)
+    elif text == t(user_id, 'menu_language'):
+        await change_language(message, state)
+    elif text == t(user_id, 'menu_admin'):
+        await admin_button(message, state)
+    elif text == t(user_id, 'menu_feed'):
+        await show_feed(message, state)
+    else:
+        await message.answer(t(user_id, 'action_choose'), reply_markup=get_main_menu_keyboard(user_id))
+
 # Feed: Back button (state-independent)
 @dp.callback_query(F.data == "feed_back")
 async def feed_back(query: types.CallbackQuery, state: FSMContext):
