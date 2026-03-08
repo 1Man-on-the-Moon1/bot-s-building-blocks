@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Bot configuration
-BOT_NAME = 'ЦИТРАМОН'
+BOT_NAME = 'CITRAMON DATING'
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 ADMIN_ID = int(os.getenv('ADMIN_ID', '0'))
 
@@ -57,5 +57,6 @@ MAX_AGE = 120
 # Newbie boost duration (in hours)
 NEWBIE_BOOST_HOURS = 48
 
-# Rating publication delay (in hours)
-RATING_PUBLICATION_DELAY_HOURS = 24
+# Rating configuration
+RATING_PRIOR_WEIGHT = 2  # Bayesian prior weight
+RATING_PRIOR_VALUE = 5.0  # Starting rating for new users
