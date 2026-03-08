@@ -76,6 +76,7 @@ TEXTS = {
         'no_matches': '😔 У вас пока нет мэтчей',
         'match_chat': '💬 Чат',
         'match_date': '📅 Свидание',
+        'match_view_profile': '👤 Анкета',
         'match_reviews': '📝 Отзывы',
 
         # Chat
@@ -267,6 +268,7 @@ TEXTS = {
         'no_matches': '😔 You have no matches yet',
         'match_chat': '💬 Chat',
         'match_date': '📅 Date',
+        'match_view_profile': '👤 Profile',
         'match_reviews': '📝 Reviews',
 
         # Chat

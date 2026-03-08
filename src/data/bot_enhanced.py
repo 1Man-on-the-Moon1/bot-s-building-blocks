@@ -144,8 +144,9 @@ def get_match_keyboard(user_id: int, match_id: int, partner_id: int) -> InlineKe
     builder = InlineKeyboardBuilder()
     builder.button(text=t(user_id, 'match_chat'), callback_data=f"chat_{match_id}")
     builder.button(text=t(user_id, 'match_date'), callback_data=f"date_{match_id}")
+    builder.button(text=t(user_id, 'match_view_profile'), callback_data=f"viewprofile_{partner_id}")
     builder.button(text=t(user_id, 'match_reviews'), callback_data=f"reviews_{partner_id}")
-    builder.adjust(2, 1)
+    builder.adjust(2, 2)
     return builder.as_markup()
 
 def get_date_type_keyboard(user_id: int, match_id: int) -> InlineKeyboardMarkup:
@@ -646,6 +647,36 @@ async def show_feed(message: types.Message, state: FSMContext):
     
     await state.set_state(MainMenuState.browsing_feed)
 
+# ===== Allow menu buttons while browsing feed =====
+@dp.message(MainMenuState.browsing_feed, lambda m: m.text and is_menu_button(m.from_user.id, m.text))
+async def menu_from_feed(message: types.Message, state: FSMContext):
+    """Allow user to pick any menu action without leaving the feed first."""
+    user_id = message.from_user.id
+    await state.set_state(MainMenuState.main_menu)
+    # Re-dispatch: set state to main_menu and re-process the message
+    # We call the appropriate handler directly based on the text
+    text = message.text
+    if text == t(user_id, 'menu_matches'):
+        await show_matches(message, state)
+    elif text == t(user_id, 'menu_profile'):
+        await show_profile(message, state)
+    elif text == t(user_id, 'menu_photos'):
+        await view_photos(message, state)
+    elif text == t(user_id, 'menu_edit'):
+        await edit_profile(message, state)
+    elif text == t(user_id, 'menu_support'):
+        await support(message, state)
+    elif text == t(user_id, 'menu_delete'):
+        await delete_profile_prompt(message, state)
+    elif text == t(user_id, 'menu_language'):
+        await change_language(message, state)
+    elif text == t(user_id, 'menu_admin'):
+        await admin_button(message, state)
+    elif text == t(user_id, 'menu_feed'):
+        await show_feed(message, state)
+    else:
+        await message.answer(t(user_id, 'action_choose'), reply_markup=get_main_menu_keyboard(user_id))
+
 # Feed: Back button (state-independent)
 @dp.callback_query(F.data == "feed_back")
 async def feed_back(query: types.CallbackQuery, state: FSMContext):
@@ -750,6 +781,18 @@ async def process_complaint(query: types.CallbackQuery, state: FSMContext):
     user_id = query.from_user.id
     db.add_complaint(user_id, to_user_id, complaint_type)
     
+    # Notify admin with target user ID
+    from_user = db.get_user(user_id)
+    to_user = db.get_user(to_user_id)
+    try:
+        admin_text = f"🚨 Новая жалоба!\n\n"
+        admin_text += f"От: {from_user['name'] if from_user else '?'} (ID: {user_id})\n"
+        admin_text += f"На: {to_user['name'] if to_user else '?'} (ID: {to_user_id})\n"
+        admin_text += f"Тип: {complaint_type}"
+        await bot.send_message(ADMIN_ID, admin_text)
+    except Exception as e:
+        logger.error(f"Failed to notify admin about complaint: {e}")
+    
     await query.message.answer(
         t(user_id, 'complaint_sent'),
         reply_markup=get_main_menu_keyboard(user_id)
@@ -813,6 +856,30 @@ async def show_reviews(query: types.CallbackQuery, state: FSMContext):
         text += f"{'⭐' * r['stars']} от {reviewer_name}: {positive}{negative}\n"
     
     await query.message.answer(text)
+
+# ===== View partner profile from matches (state-independent) =====
+
+@dp.callback_query(F.data.regexp(r'^viewprofile_\d+$'))
+async def view_partner_profile(query: types.CallbackQuery, state: FSMContext):
+    """Show full profile of a match partner."""
+    user_id = query.from_user.id
+    partner_id = int(query.data.split("_")[1])
+    partner = db.get_user(partner_id)
+    
+    if not partner:
+        await query.answer(t(user_id, 'profile_not_found'))
+        return
+    
+    photos = db.get_user_photos(partner_id)
+    caption = build_profile_caption(partner, user_id)
+    
+    if photos:
+        await query.message.answer_photo(
+            photo=photos[0]['file_id'],
+            caption=caption
+        )
+    else:
+        await query.message.answer(caption)
 
 # ===== Matches =====
 
@@ -1595,10 +1662,8 @@ async def search_user(message: types.Message, state: FSMContext):
         
         builder = InlineKeyboardBuilder()
         builder.button(text="🚫 Заблокировать", callback_data=f"admin_ban_{user_id}")
-        builder.button(text="👻 Теневой бан", callback_data=f"admin_shadow_ban_{user_id}")
-        builder.button(text="⭐ Обнулить рейтинг", callback_data=f"admin_reset_rating_{user_id}")
-        builder.button(text="🔄 Обнулить анкету", callback_data=f"admin_full_reset_{user_id}")
         builder.button(text="🔓 Разблокировать", callback_data=f"admin_unban_{user_id}")
+        builder.button(text="🔄 Обнулить анкету", callback_data=f"admin_full_reset_{user_id}")
         builder.adjust(1)
         
         await message.answer(text, reply_markup=builder.as_markup())
