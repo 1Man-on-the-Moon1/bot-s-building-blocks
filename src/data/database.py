@@ -566,6 +566,33 @@ class Database:
         conn.close()
         return dict(row) if row else None
     
+    def has_completed_date_between(self, user1_id: int, user2_id: int) -> bool:
+        """Check if there was a completed date between two users."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        if user1_id > user2_id:
+            user1_id, user2_id = user2_id, user1_id
+        cursor.execute('''
+            SELECT 1 FROM dates d
+            JOIN matches m ON d.match_id = m.match_id
+            WHERE m.user1_id = ? AND m.user2_id = ? AND d.status = 'completed'
+            LIMIT 1
+        ''', (user1_id, user2_id))
+        result = cursor.fetchone()
+        conn.close()
+        return result is not None
+    
+    def get_match_id_between(self, user1_id: int, user2_id: int) -> Optional[int]:
+        """Get match_id between two users."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        if user1_id > user2_id:
+            user1_id, user2_id = user2_id, user1_id
+        cursor.execute('SELECT match_id FROM matches WHERE user1_id = ? AND user2_id = ?', (user1_id, user2_id))
+        row = cursor.fetchone()
+        conn.close()
+        return row['match_id'] if row else None
+
     # Rating operations
     def add_rating(self, date_id: int, from_user_id: int, to_user_id: int, 
                    stars: int, positive_tags: List[str] = None, negative_tags: List[str] = None) -> bool:
@@ -806,6 +833,19 @@ class Database:
         finally:
             conn.close()
     
+    def unban_user(self, user_id: int) -> bool:
+        """Unban user (remove both regular and shadow ban)."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute('''
+                UPDATE users SET is_banned = 0, is_shadow_banned = 0 WHERE user_id = ?
+            ''', (user_id,))
+            conn.commit()
+            return True
+        finally:
+            conn.close()
+    
     def reset_user_rating(self, user_id: int) -> bool:
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -815,6 +855,30 @@ class Database:
             ''', (RATING_PRIOR_VALUE, user_id))
             conn.commit()
             return True
+        finally:
+            conn.close()
+    
+    def full_reset_user_profile(self, user_id: int) -> bool:
+        """Full profile reset: delete all ratings/reviews and reset rating to default."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            # Delete all ratings FROM this user and TO this user
+            cursor.execute('DELETE FROM ratings WHERE from_user_id = ? OR to_user_id = ?', (user_id, user_id))
+            # Reset rating to default
+            cursor.execute('''
+                UPDATE users SET rating = ?, rating_count = 0 WHERE user_id = ?
+            ''', (RATING_PRIOR_VALUE, user_id))
+            conn.commit()
+            # Recalculate ratings for all users who were rated by this user
+            cursor.execute('SELECT DISTINCT to_user_id FROM ratings WHERE to_user_id != ?', (user_id,))
+            affected = cursor.fetchall()
+            for row in affected:
+                self.update_user_rating(row['to_user_id'])
+            return True
+        except Exception:
+            conn.rollback()
+            return False
         finally:
             conn.close()
     

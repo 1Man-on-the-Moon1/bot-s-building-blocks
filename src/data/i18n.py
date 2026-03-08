@@ -84,6 +84,7 @@ TEXTS = {
         'chat_send_prompt': '\nОтправьте сообщение (или нажмите ◀️ Назад):',
         'chat_msg_sent': '✅ Сообщение отправлено!\n\nМожете продолжить общение или нажмите ◀️ Назад.',
         'chat_new_msg': '💬 Новое сообщение от {name}:\n\n{text}',
+        'chat_reply': '💬 Ответить',
 
         # Date flow
         'date_choose_type': '📅 Выберите тип свидания:',
@@ -175,9 +176,13 @@ TEXTS = {
         'admin_ban': '🚫 Заблокировать',
         'admin_shadow_ban': '👻 Теневой бан',
         'admin_reset_rating': '⭐ Обнулить рейтинг',
+        'admin_full_reset': '🔄 Обнулить анкету',
+        'admin_unban': '🔓 Разблокировать',
         'admin_banned': '✅ Пользователь заблокирован',
         'admin_shadow_banned': '✅ Пользователь получил теневой бан',
         'admin_rating_reset': '✅ Рейтинг пользователя обнулен',
+        'admin_full_reset_done': '✅ Анкета обнулена: рейтинг сброшен, все отзывы удалены',
+        'admin_unbanned': '✅ Пользователь разблокирован',
         'admin_broadcast_prompt': 'Введите текст рассылки (или ◀️ Назад для отмены):',
         'admin_broadcast_done': '✅ Рассылка отправлена {count} пользователям',
         'admin_complaint_approved': '✅ Жалоба одобрена, пользователь теневой бан',
@@ -270,6 +275,7 @@ TEXTS = {
         'chat_send_prompt': '\nSend a message (or press ◀️ Back):',
         'chat_msg_sent': '✅ Message sent!\n\nYou can continue chatting or press ◀️ Back.',
         'chat_new_msg': '💬 New message from {name}:\n\n{text}',
+        'chat_reply': '💬 Reply',
 
         # Date flow
         'date_choose_type': '📅 Choose date type:',
@@ -361,9 +367,13 @@ TEXTS = {
         'admin_ban': '🚫 Заблокировать',
         'admin_shadow_ban': '👻 Теневой бан',
         'admin_reset_rating': '⭐ Обнулить рейтинг',
+        'admin_full_reset': '🔄 Обнулить анкету',
+        'admin_unban': '🔓 Разблокировать',
         'admin_banned': '✅ Пользователь заблокирован',
         'admin_shadow_banned': '✅ Пользователь получил теневой бан',
         'admin_rating_reset': '✅ Рейтинг пользователя обнулен',
+        'admin_full_reset_done': '✅ Анкета обнулена: рейтинг сброшен, все отзывы удалены',
+        'admin_unbanned': '✅ Пользователь разблокирован',
         'admin_broadcast_prompt': 'Введите текст рассылки (или ◀️ Назад для отмены):',
         'admin_broadcast_done': '✅ Рассылка отправлена {count} пользователям',
         'admin_complaint_approved': '✅ Жалоба одобрена, пользователь теневой бан',
