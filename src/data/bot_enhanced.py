@@ -144,8 +144,9 @@ def get_match_keyboard(user_id: int, match_id: int, partner_id: int) -> InlineKe
     builder = InlineKeyboardBuilder()
     builder.button(text=t(user_id, 'match_chat'), callback_data=f"chat_{match_id}")
     builder.button(text=t(user_id, 'match_date'), callback_data=f"date_{match_id}")
+    builder.button(text=t(user_id, 'match_view_profile'), callback_data=f"viewprofile_{partner_id}")
     builder.button(text=t(user_id, 'match_reviews'), callback_data=f"reviews_{partner_id}")
-    builder.adjust(2, 1)
+    builder.adjust(2, 2)
     return builder.as_markup()
 
 def get_date_type_keyboard(user_id: int, match_id: int) -> InlineKeyboardMarkup:
