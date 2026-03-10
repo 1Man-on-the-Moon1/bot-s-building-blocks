@@ -83,6 +83,7 @@ const Presentation = () => {
 
   return (
     <div className="slide-container bg-background select-none cursor-default">
+      <PdfExportButton />
       {/* Scaled slide */}
       <div
         className="slide-wrapper"
