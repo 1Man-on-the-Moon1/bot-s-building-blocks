@@ -8,16 +8,11 @@ const files = [
   { name: "database.py", path: "/src/data/database.py", desc: "Работа с базой данных" },
   { name: "i18n.py", path: "/src/data/i18n.py", desc: "Модуль локализации (RU/EN)" },
   { name: ".env", path: "/src/data/env.txt", desc: "Файл окружения (переименуйте в .env)" },
-];
-
-const changeLog = [
-  { icon: "🔄", title: "Переименование", desc: "ЦИТРАМОН → CITRAMON DATING во всех сообщениях (RU/EN)" },
-  { icon: "💬", title: "Чат: кнопка Назад", desc: "После отправки сообщения остаёмся в чате, кнопка ◀️ Назад всегда доступна" },
-  { icon: "⭐", title: "Оценка только после свидания", desc: "Убрана кнопка «Оценить» из мэтчей. Рейтинг ставится только после завершённого свидания" },
-  { icon: "📅", title: "Дубликат приглашений", desc: "Приглашение отправляется ОДИН раз, только после выбора Онлайн/Офлайн. Блокировка повторных" },
-  { icon: "📝", title: "Отзывы", desc: "Под каждой анкетой кнопка «Отзывы» с агрегированной статистикой: средний рейтинг, теги, последние отзывы" },
-  { icon: "📊", title: "Рейтинг v2", desc: "Байесовская средняя: новички стартуют с 5.0, рейтинг обновляется мгновенно после оценки" },
-  { icon: "📱", title: "Онлайн-свидание", desc: "После подтверждения бот предлагает обменяться ссылкой: Zoom, Яндекс Телемост, Google Meet" },
+  { name: "requirements.txt", path: "/src/data/requirements.txt", desc: "Зависимости Python" },
+  { name: "Dockerfile", path: "/src/data/Dockerfile", desc: "Dockerfile для деплоя" },
+  { name: "Procfile", path: "/src/data/Procfile", desc: "Procfile для Heroku/Railway" },
+  { name: "runtime.txt", path: "/src/data/runtime.txt", desc: "Версия Python" },
+  { name: ".gitignore", path: "/src/data/gitignore.txt", desc: "Gitignore (переименуйте в .gitignore)" },
 ];
 
 const Index = () => {
@@ -54,29 +49,12 @@ const Index = () => {
       <div className="max-w-2xl mx-auto space-y-8">
         <div className="text-center space-y-2">
           <h1 className="text-4xl font-bold tracking-tight text-foreground">
-            💊 CITRAMON DATING — обновлённые файлы v3
+            💊 CITRAMON DATING — файлы бота
           </h1>
           <p className="text-muted-foreground">
-            Скачайте все файлы бота и замените их в своём проекте
+            Скачайте все файлы и загрузите в репозиторий GitHub
           </p>
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">📋 Что изменено</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {changeLog.map((item) => (
-              <div key={item.title} className="flex gap-3 items-start">
-                <span className="text-xl">{item.icon}</span>
-                <div>
-                  <p className="font-medium text-foreground">{item.title}</p>
-                  <p className="text-sm text-muted-foreground">{item.desc}</p>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
 
         <div className="space-y-3">
           {files.map((file) => (
@@ -105,54 +83,18 @@ const Index = () => {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">📝 Инструкция по обновлению</CardTitle>
-            <CardDescription>Без потери зарегистрированных пользователей</CardDescription>
+            <CardDescription>База пользователей сохранится</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
-            <p>1. Скачайте все файлы (кроме .env — он у вас уже есть)</p>
-            <p>2. На сервере:</p>
-            <pre className="bg-muted p-3 rounded text-xs">
-{`cd citramon
-# Остановите бота
-sudo systemctl stop citramon
-
-# Обновите файлы
-git pull
-# или загрузите файлы вручную
-
-# Установите новую зависимость (если нужна)
-source venv/bin/activate
-pip install aiogram python-dotenv
-
-# Запустите бота
-sudo systemctl start citramon
-sudo systemctl status citramon`}
-            </pre>
+            <p>1. Скачайте все файлы</p>
+            <p>2. Загрузите в репозиторий GitHub (замените существующие файлы)</p>
+            <p>3. <code className="bg-muted px-1 rounded">.env</code> — добавьте в корень проекта, если ещё нет</p>
+            <p>4. <code className="bg-muted px-1 rounded">.gitignore</code> — переименуйте из gitignore.txt</p>
             <p className="text-foreground font-medium mt-4">⚠️ ВАЖНО:</p>
             <p>• НЕ удаляйте <code className="bg-muted px-1 rounded">vibestar.db</code> — это база с пользователями</p>
             <p>• НЕ удаляйте <code className="bg-muted px-1 rounded">.env</code> — он уже настроен</p>
             <p>• Миграции БД запускаются автоматически при старте</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">📊 Как работает рейтинг</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm text-muted-foreground">
-            <p>Используется <strong>байесовская средняя</strong>:</p>
-            <pre className="bg-muted p-3 rounded text-xs">
-{`Рейтинг = (2 × 5.0 + сумма_звёзд) / (2 + кол-во_оценок)
-
-Примеры:
-• Новичок (0 оценок): 5.0
-• 1 оценка 5⭐: (10 + 5) / 3 = 5.0
-• 1 оценка 1⭐: (10 + 1) / 3 = 3.67
-• 5 оценок по 4⭐: (10 + 20) / 7 = 4.29
-• 10 оценок по 5⭐: (10 + 50) / 12 = 5.0`}
-            </pre>
-            <p>Рейтинг обновляется <strong>мгновенно</strong> после каждой оценки.</p>
-            <p>Оценка возможна только после свидания (оба нажали «Я на месте»).</p>
-            <p>Можно назначить несколько свиданий и оставить оценку после каждого.</p>
+            <p>• Структура таблиц обновится без потери данных</p>
           </CardContent>
         </Card>
       </div>

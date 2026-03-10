@@ -206,7 +206,7 @@ TEXTS = {
         'lang_en': '🇬🇧 English',
 
         # Registration
-        'welcome_new': '👋 Welcome to CITRAMON DATING — a dating app in Belarus!\n\nLet\'s create your profile. What is your name? (max 20 characters)\n\nPress ◀️ Back to cancel',
+        'welcome_new': '👋 Welcome to CITRAMON DATING — a dating app!\n\nLet\'s create your profile. What is your name? (max 20 characters)\n\nPress ◀️ Back to cancel',
         'welcome_back': '👋 Welcome to CITRAMON DATING!\n\nChoose an action:',
         'reg_cancelled': 'Registration cancelled. Type /start to begin again.',
         'enter_name': 'What is your name? (max 20 characters)',
