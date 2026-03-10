@@ -16,8 +16,8 @@ const SlideProblem = () => (
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <span className="text-[18px] font-semibold uppercase tracking-[6px] text-primary/80">Проблема</span>
-        <h2 className="text-[64px] font-bold mt-4 leading-tight">
+        <span className="text-[22px] font-semibold uppercase tracking-[6px] text-primary/80">Проблема</span>
+        <h2 className="text-[80px] font-bold mt-4 leading-tight">
           Дейтинг сломан.
           <br />
           <span className="text-gradient-primary">Доверие — на нуле.</span>
@@ -33,10 +33,10 @@ const SlideProblem = () => (
             transition={{ duration: 0.5, delay: 0.3 + i * 0.15 }}
             className="card-glass rounded-3xl p-10 flex gap-8 items-start"
           >
-            <span className="text-[48px] shrink-0">{p.icon}</span>
+            <span className="text-[60px] shrink-0">{p.icon}</span>
             <div>
-              <h3 className="text-[28px] font-semibold mb-3">{p.title}</h3>
-              <p className="text-[20px] text-muted-foreground leading-relaxed">{p.desc}</p>
+              <h3 className="text-[36px] font-semibold mb-3">{p.title}</h3>
+              <p className="text-[24px] text-muted-foreground leading-relaxed">{p.desc}</p>
             </div>
           </motion.div>
         ))}
