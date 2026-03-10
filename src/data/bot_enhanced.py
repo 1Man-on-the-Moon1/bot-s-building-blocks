@@ -785,11 +785,13 @@ async def process_complaint(query: types.CallbackQuery, state: FSMContext):
     from_user = db.get_user(user_id)
     to_user = db.get_user(to_user_id)
     try:
+        from_name = from_user['name'] if from_user else '?'
+        to_name = to_user['name'] if to_user else '?'
         admin_text = f"🚨 Новая жалоба!\n\n"
-        admin_text += f"От: {from_user['name'] if from_user else '?'} (ID: {user_id})\n"
-        admin_text += f"На: {to_user['name'] if to_user else '?'} (ID: {to_user_id})\n"
+        admin_text += f"От: <a href='tg://user?id={user_id}'>{from_name}</a> (ID: <code>{user_id}</code>)\n"
+        admin_text += f"На: <a href='tg://user?id={to_user_id}'>{to_name}</a> (ID: <code>{to_user_id}</code>)\n"
         admin_text += f"Тип: {complaint_type}"
-        await bot.send_message(ADMIN_ID, admin_text)
+        await bot.send_message(ADMIN_ID, admin_text, parse_mode="HTML")
     except Exception as e:
         logger.error(f"Failed to notify admin about complaint: {e}")
     
@@ -1597,9 +1599,12 @@ async def show_complaints(message: types.Message, state: FSMContext):
         from_user = db.get_user(complaint['from_user_id'])
         to_user = db.get_user(complaint['to_user_id'])
         
+        from_name = from_user['name'] if from_user else 'Удалён'
+        to_name = to_user['name'] if to_user else 'Удалён'
+        
         text = f"📋 Жалоба #{complaint['complaint_id']}\n\n"
-        text += f"От: {from_user['name'] if from_user else 'Удалён'}\n"
-        text += f"На: {to_user['name'] if to_user else 'Удалён'}\n"
+        text += f"От: <a href='tg://user?id={complaint['from_user_id']}'>{from_name}</a> (ID: <code>{complaint['from_user_id']}</code>)\n"
+        text += f"На: <a href='tg://user?id={complaint['to_user_id']}'>{to_name}</a> (ID: <code>{complaint['to_user_id']}</code>)\n"
         text += f"Тип: {complaint['complaint_type']}\n"
         text += f"Описание: {complaint['description']}\n"
         
@@ -1608,7 +1613,7 @@ async def show_complaints(message: types.Message, state: FSMContext):
         builder.button(text="❌ Отклонить", callback_data=f"resolve_complaint_{complaint['complaint_id']}_rejected")
         builder.adjust(2)
         
-        await message.answer(text, reply_markup=builder.as_markup())
+        await message.answer(text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 @dp.callback_query(F.data.startswith("resolve_complaint_"))
 async def resolve_complaint(query: types.CallbackQuery):
