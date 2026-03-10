@@ -1599,9 +1599,12 @@ async def show_complaints(message: types.Message, state: FSMContext):
         from_user = db.get_user(complaint['from_user_id'])
         to_user = db.get_user(complaint['to_user_id'])
         
+        from_name = from_user['name'] if from_user else 'Удалён'
+        to_name = to_user['name'] if to_user else 'Удалён'
+        
         text = f"📋 Жалоба #{complaint['complaint_id']}\n\n"
-        text += f"От: {from_user['name'] if from_user else 'Удалён'}\n"
-        text += f"На: {to_user['name'] if to_user else 'Удалён'}\n"
+        text += f"От: <a href='tg://user?id={complaint['from_user_id']}'>{from_name}</a> (ID: <code>{complaint['from_user_id']}</code>)\n"
+        text += f"На: <a href='tg://user?id={complaint['to_user_id']}'>{to_name}</a> (ID: <code>{complaint['to_user_id']}</code>)\n"
         text += f"Тип: {complaint['complaint_type']}\n"
         text += f"Описание: {complaint['description']}\n"
         
