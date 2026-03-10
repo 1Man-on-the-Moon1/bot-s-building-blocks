@@ -587,6 +587,8 @@ async def process_interests(query: types.CallbackQuery, state: FSMContext):
             t(user_id, 'reg_complete'),
             reply_markup=get_main_menu_keyboard(user_id)
         )
+        # Контекстная подсказка после регистрации
+        await query.message.answer("💡 Нажмите ❤️ под анкетой, чтобы лайкнуть")
         await state.set_state(MainMenuState.main_menu)
         return
     
