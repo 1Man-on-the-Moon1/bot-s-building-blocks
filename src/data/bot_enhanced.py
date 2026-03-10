@@ -587,6 +587,8 @@ async def process_interests(query: types.CallbackQuery, state: FSMContext):
             t(user_id, 'reg_complete'),
             reply_markup=get_main_menu_keyboard(user_id)
         )
+        # Контекстная подсказка после регистрации
+        await query.message.answer("💡 Нажмите ❤️ под анкетой, чтобы лайкнуть")
         await state.set_state(MainMenuState.main_menu)
         return
     
@@ -700,18 +702,39 @@ async def like_profile(query: types.CallbackQuery, state: FSMContext):
     if db.check_mutual_like(user_id, to_user_id):
         match_id = db.create_match(user_id, to_user_id)
         
-        await bot.send_message(
-            user_id,
-            t(user_id, 'feed_mutual'),
-            reply_markup=get_main_menu_keyboard(user_id)
-        )
+        # Контекстная подсказка при первом мэтче - проверяем количество мэтчей
+        from_user_matches = db.get_user_matches(user_id)
+        is_first_match = len(from_user_matches) == 1
+        
+        if is_first_match:
+            await bot.send_message(
+                user_id,
+                "💡 Теперь вы можете написать собеседнику",
+                reply_markup=get_main_menu_keyboard(user_id)
+            )
+        else:
+            await bot.send_message(
+                user_id,
+                t(user_id, 'feed_mutual'),
+                reply_markup=get_main_menu_keyboard(user_id)
+            )
+        
+        to_user_matches = db.get_user_matches(to_user_id)
+        is_partner_first_match = len(to_user_matches) == 1
         
         from_user = db.get_user(user_id)
-        await bot.send_message(
-            to_user_id,
-            t(to_user_id, 'feed_mutual_partner', name=from_user['name']),
-            reply_markup=get_main_menu_keyboard(to_user_id)
-        )
+        if is_partner_first_match:
+            await bot.send_message(
+                to_user_id,
+                "💡 Теперь вы можете написать собеседнику",
+                reply_markup=get_main_menu_keyboard(to_user_id)
+            )
+        else:
+            await bot.send_message(
+                to_user_id,
+                t(to_user_id, 'feed_mutual_partner', name=from_user['name']),
+                reply_markup=get_main_menu_keyboard(to_user_id)
+            )
     else:
         await query.answer(t(user_id, 'feed_like_sent'))
     
