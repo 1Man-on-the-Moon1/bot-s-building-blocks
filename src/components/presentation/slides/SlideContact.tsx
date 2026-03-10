@@ -13,14 +13,14 @@ const SlideContact = () => (
         transition={{ duration: 0.6 }}
         className="mb-8"
       >
-        <span className="text-[100px]">💊</span>
+        <span className="text-[120px]">💊</span>
       </motion.div>
 
       <motion.h2
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, duration: 0.6 }}
-        className="text-[72px] font-bold text-gradient-primary mb-6"
+        className="text-[90px] font-bold text-gradient-primary mb-6"
       >
         Присоединяйтесь
       </motion.h2>
@@ -29,7 +29,7 @@ const SlideContact = () => (
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
-        className="text-[28px] text-muted-foreground max-w-[800px] leading-relaxed mb-16"
+        className="text-[36px] text-muted-foreground max-w-[800px] leading-relaxed mb-16"
       >
         CITRAMON DATING — дейтинг, где репутация решает всё.
         <br />Мы ищем инвесторов для запуска и масштабирования.
@@ -42,17 +42,17 @@ const SlideContact = () => (
         className="flex gap-8"
       >
         <div className="card-glass rounded-2xl px-12 py-8 text-center glow-primary">
-          <p className="text-[18px] text-muted-foreground mb-2">Seed раунд</p>
-          <p className="text-[40px] font-bold text-gradient-warm">$50K</p>
+          <p className="text-[22px] text-muted-foreground mb-2">Seed раунд</p>
+          <p className="text-[48px] font-bold text-gradient-warm">$50K</p>
         </div>
         <div className="card-glass rounded-2xl px-12 py-8 text-center">
-          <p className="text-[18px] text-muted-foreground mb-2">Цель пользователей</p>
-          <p className="text-[40px] font-bold">10K</p>
-          <p className="text-[16px] text-muted-foreground">за 6 месяцев</p>
+          <p className="text-[22px] text-muted-foreground mb-2">Цель пользователей</p>
+          <p className="text-[48px] font-bold">10K</p>
+          <p className="text-[18px] text-muted-foreground">за 6 месяцев</p>
         </div>
         <div className="card-glass rounded-2xl px-12 py-8 text-center">
-          <p className="text-[18px] text-muted-foreground mb-2">Break-even</p>
-          <p className="text-[40px] font-bold">12 мес</p>
+          <p className="text-[22px] text-muted-foreground mb-2">Break-even</p>
+          <p className="text-[48px] font-bold">12 мес</p>
         </div>
       </motion.div>
 
@@ -60,7 +60,7 @@ const SlideContact = () => (
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1 }}
-        className="mt-16 text-[22px] text-muted-foreground"
+        className="mt-16 text-[26px] text-muted-foreground"
       >
         📧 contact@citramon.dating &nbsp;&nbsp;·&nbsp;&nbsp; 📱 Telegram: @citramon_dating
       </motion.div>

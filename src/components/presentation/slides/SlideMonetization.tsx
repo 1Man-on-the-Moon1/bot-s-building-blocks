@@ -29,8 +29,8 @@ const SlideMonetization = () => (
   <SlideLayout>
     <div className="flex flex-col h-full px-[120px] py-[100px]">
       <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }}>
-        <span className="text-[18px] font-semibold uppercase tracking-[6px] text-accent/80">Монетизация</span>
-        <h2 className="text-[64px] font-bold mt-4">Модель <span className="text-gradient-warm">Freemium</span></h2>
+        <span className="text-[22px] font-semibold uppercase tracking-[6px] text-accent/80">Монетизация</span>
+        <h2 className="text-[80px] font-bold mt-4">Модель <span className="text-gradient-warm">Freemium</span></h2>
       </motion.div>
 
       <div className="grid grid-cols-3 gap-10 mt-16 flex-1 items-start">
@@ -47,14 +47,14 @@ const SlideMonetization = () => (
             }`}
           >
             <div className="text-center mb-8">
-              <span className="text-[56px]">{tier.icon}</span>
-              <h3 className="text-[32px] font-bold mt-4">{tier.name}</h3>
-              <p className="text-[36px] font-bold text-gradient-warm mt-2">{tier.price}</p>
+              <span className="text-[70px]">{tier.icon}</span>
+              <h3 className="text-[40px] font-bold mt-4">{tier.name}</h3>
+              <p className="text-[44px] font-bold text-gradient-warm mt-2">{tier.price}</p>
             </div>
             <ul className="space-y-4 flex-1">
               {tier.features.map((f, j) => (
-                <li key={j} className="flex items-center gap-3 text-[20px]">
-                  <span className="text-primary text-[18px]">✓</span>
+                <li key={j} className="flex items-center gap-3 text-[24px]">
+                  <span className="text-primary text-[20px]">✓</span>
                   <span className="text-muted-foreground">{f}</span>
                 </li>
               ))}
@@ -69,7 +69,7 @@ const SlideMonetization = () => (
         transition={{ delay: 0.9 }}
         className="mt-8 text-center"
       >
-        <p className="text-[20px] text-muted-foreground">
+        <p className="text-[24px] text-muted-foreground">
           Дополнительно: <span className="text-foreground font-semibold">Boost-пакеты</span> (попадание в топ ленты) · <span className="text-foreground font-semibold">Подарки</span> (виртуальные) · <span className="text-foreground font-semibold">Рекламные партнёрства</span> с кафе и заведениями
         </p>
       </motion.div>

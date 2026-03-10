@@ -32,8 +32,8 @@ const SlideRoadmap = () => (
   <SlideLayout>
     <div className="flex flex-col h-full px-[120px] py-[100px]">
       <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }}>
-        <span className="text-[18px] font-semibold uppercase tracking-[6px] text-accent/80">Roadmap</span>
-        <h2 className="text-[64px] font-bold mt-4">План <span className="text-gradient-warm">развития</span></h2>
+        <span className="text-[22px] font-semibold uppercase tracking-[6px] text-accent/80">Roadmap</span>
+        <h2 className="text-[80px] font-bold mt-4">План <span className="text-gradient-warm">развития</span></h2>
       </motion.div>
 
       <div className="grid grid-cols-4 gap-8 mt-16 flex-1 relative">
@@ -59,13 +59,13 @@ const SlideRoadmap = () => (
             <div className={`card-glass rounded-3xl p-8 flex-1 ${
               phase.status === 'current' ? 'border border-primary/30' : ''
             }`}>
-              <span className={`text-[16px] font-mono ${
+              <span className={`text-[22px] font-mono ${
                 phase.status === 'current' ? 'text-primary' : 'text-muted-foreground'
               }`}>{phase.q}</span>
-              <h3 className="text-[26px] font-bold mt-3 mb-6">{phase.title}</h3>
+              <h3 className="text-[34px] font-bold mt-3 mb-6">{phase.title}</h3>
               <ul className="space-y-3">
                 {phase.items.map((item, j) => (
-                  <li key={j} className="flex gap-3 text-[18px] text-muted-foreground">
+                  <li key={j} className="flex gap-3 text-[22px] text-muted-foreground">
                     <span className="text-primary shrink-0">→</span>
                     {item}
                   </li>

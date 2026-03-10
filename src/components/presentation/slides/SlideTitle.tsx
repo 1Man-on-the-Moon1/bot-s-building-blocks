@@ -14,14 +14,14 @@ const SlideTitle = () => (
         transition={{ duration: 0.6 }}
         className="mb-12"
       >
-        <span className="text-[80px]">💊</span>
+        <span className="text-[100px]">💊</span>
       </motion.div>
 
       <motion.h1
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, delay: 0.2 }}
-        className="text-[96px] font-bold leading-none tracking-tight text-gradient-primary mb-8"
+        className="text-[120px] font-bold leading-none tracking-tight text-gradient-primary mb-8"
       >
         CITRAMON DATING
       </motion.h1>
@@ -30,7 +30,7 @@ const SlideTitle = () => (
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.5 }}
-        className="text-[32px] text-muted-foreground font-light max-w-[1000px] leading-relaxed"
+        className="text-[42px] text-muted-foreground font-light max-w-[1000px] leading-relaxed"
       >
         Telegram-бот для знакомств с системой рейтингов и верификацией через реальные встречи
       </motion.p>
@@ -41,13 +41,13 @@ const SlideTitle = () => (
         transition={{ delay: 0.8 }}
         className="mt-16 flex gap-6"
       >
-        <div className="card-glass rounded-2xl px-8 py-4 text-[20px] text-muted-foreground">
+        <div className="card-glass rounded-2xl px-8 py-4 text-[24px] text-muted-foreground">
           🇧🇾 Беларусь · 6 городов
         </div>
-        <div className="card-glass rounded-2xl px-8 py-4 text-[20px] text-muted-foreground">
+        <div className="card-glass rounded-2xl px-8 py-4 text-[24px] text-muted-foreground">
           🌐 RU / EN
         </div>
-        <div className="card-glass rounded-2xl px-8 py-4 text-[20px] text-muted-foreground">
+        <div className="card-glass rounded-2xl px-8 py-4 text-[24px] text-muted-foreground">
           ⭐ Система рейтингов
         </div>
       </motion.div>
