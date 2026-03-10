@@ -236,7 +236,7 @@ class Database:
             conn.close()
     
     def delete_user(self, user_id: int) -> bool:
-        """Delete user and all related data from all tables."""
+        """Delete user and related data, but KEEP ratings and reviews for future re-registration."""
         conn = self.get_connection()
         cursor = conn.cursor()
         try:
@@ -244,7 +244,7 @@ class Database:
             cursor.execute('DELETE FROM likes WHERE from_user_id = ? OR to_user_id = ?', (user_id, user_id))
             cursor.execute('DELETE FROM skips WHERE from_user_id = ? OR to_user_id = ?', (user_id, user_id))
             cursor.execute('DELETE FROM messages WHERE from_user_id = ? OR to_user_id = ?', (user_id, user_id))
-            cursor.execute('DELETE FROM ratings WHERE from_user_id = ? OR to_user_id = ?', (user_id, user_id))
+            # Keep ratings! They persist across re-registration
             cursor.execute('DELETE FROM complaints WHERE from_user_id = ? OR to_user_id = ?', (user_id, user_id))
             cursor.execute('DELETE FROM user_states WHERE user_id = ?', (user_id,))
             cursor.execute('''
