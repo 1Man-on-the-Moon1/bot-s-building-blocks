@@ -12,6 +12,7 @@ import SlideMonetization from "./slides/SlideMonetization";
 import SlideTech from "./slides/SlideTech";
 import SlideRoadmap from "./slides/SlideRoadmap";
 import SlideContact from "./slides/SlideContact";
+import PdfExportButton from "./PdfExport";
 
 const slides = [
   SlideTitle,
@@ -82,6 +83,7 @@ const Presentation = () => {
 
   return (
     <div className="slide-container bg-background select-none cursor-default">
+      <PdfExportButton />
       {/* Scaled slide */}
       <div
         className="slide-wrapper"
