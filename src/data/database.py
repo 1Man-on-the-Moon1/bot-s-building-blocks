@@ -204,10 +204,18 @@ class Database:
         conn = self.get_connection()
         cursor = conn.cursor()
         try:
+            # Check if user has existing ratings from a previous account
+            cursor.execute('SELECT AVG(stars) as avg_rating, COUNT(*) as cnt FROM ratings WHERE to_user_id = ?', (user_id,))
+            row = cursor.fetchone()
+            if row and row['cnt'] > 0:
+                rating = row['avg_rating']
+            else:
+                rating = RATING_PRIOR_VALUE
+            
             cursor.execute('''
                 INSERT INTO users (user_id, name, gender, age, city, rating, language)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (user_id, name, gender, age, city, RATING_PRIOR_VALUE, language))
+            ''', (user_id, name, gender, age, city, rating, language))
             conn.commit()
             return True
         except sqlite3.IntegrityError:
