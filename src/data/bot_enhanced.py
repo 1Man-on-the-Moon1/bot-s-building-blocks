@@ -791,7 +791,7 @@ async def process_complaint(query: types.CallbackQuery, state: FSMContext):
         admin_text += f"От: <a href='tg://user?id={user_id}'>{from_name}</a> (ID: <code>{user_id}</code>)\n"
         admin_text += f"На: <a href='tg://user?id={to_user_id}'>{to_name}</a> (ID: <code>{to_user_id}</code>)\n"
         admin_text += f"Тип: {complaint_type}"
-        await bot.send_message(ADMIN_ID, admin_text)
+        await bot.send_message(ADMIN_ID, admin_text, parse_mode="HTML")
     except Exception as e:
         logger.error(f"Failed to notify admin about complaint: {e}")
     
