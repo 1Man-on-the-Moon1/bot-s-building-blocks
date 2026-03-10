@@ -1613,7 +1613,7 @@ async def show_complaints(message: types.Message, state: FSMContext):
         builder.button(text="❌ Отклонить", callback_data=f"resolve_complaint_{complaint['complaint_id']}_rejected")
         builder.adjust(2)
         
-        await message.answer(text, reply_markup=builder.as_markup())
+        await message.answer(text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 @dp.callback_query(F.data.startswith("resolve_complaint_"))
 async def resolve_complaint(query: types.CallbackQuery):
