@@ -45,14 +45,40 @@ const Onboarding = () => {
     }
   };
 
+  const compressImage = (dataUrl: string, maxSize = 800): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let { width, height } = img;
+        if (width > maxSize || height > maxSize) {
+          const ratio = Math.min(maxSize / width, maxSize / height);
+          width *= ratio;
+          height *= ratio;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.7));
+      };
+      img.src = dataUrl;
+    });
+  };
+
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
-      setPhoto(reader.result as string);
-      // Auto-advance after photo
-      setTimeout(goNext, 400);
+    reader.onload = async () => {
+      const compressed = await compressImage(reader.result as string);
+      setPhoto(compressed);
+      setTimeout(() => {
+        setStep((prev) => {
+          const idx = STEPS.indexOf(prev);
+          return STEPS[idx + 1] || prev;
+        });
+      }, 400);
     };
     reader.readAsDataURL(file);
   };
@@ -68,18 +94,39 @@ const Onboarding = () => {
   };
 
   const finish = () => {
-    saveUserProfile({
-      name,
-      gender: gender as "male" | "female",
-      age: parseInt(age),
-      city,
-      photo,
-      bio,
-      interests,
-      onboardingComplete: true,
-      createdAt: new Date().toISOString(),
-    });
-    navigate("/", { replace: true });
+    try {
+      saveUserProfile({
+        name,
+        gender: gender as "male" | "female",
+        age: parseInt(age),
+        city,
+        photo,
+        bio,
+        interests,
+        onboardingComplete: true,
+        createdAt: new Date().toISOString(),
+      });
+      navigate("/", { replace: true });
+    } catch (err) {
+      console.error("Failed to save profile:", err);
+      // Try without photo as fallback
+      try {
+        saveUserProfile({
+          name,
+          gender: gender as "male" | "female",
+          age: parseInt(age),
+          city,
+          photo: "",
+          bio,
+          interests,
+          onboardingComplete: true,
+          createdAt: new Date().toISOString(),
+        });
+        navigate("/", { replace: true });
+      } catch {
+        alert("Не удалось сохранить анкету. Попробуйте уменьшить фото.");
+      }
+    }
   };
 
   const canProceed = () => {
