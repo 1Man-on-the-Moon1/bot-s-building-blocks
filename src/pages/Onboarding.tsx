@@ -94,18 +94,39 @@ const Onboarding = () => {
   };
 
   const finish = () => {
-    saveUserProfile({
-      name,
-      gender: gender as "male" | "female",
-      age: parseInt(age),
-      city,
-      photo,
-      bio,
-      interests,
-      onboardingComplete: true,
-      createdAt: new Date().toISOString(),
-    });
-    navigate("/", { replace: true });
+    try {
+      saveUserProfile({
+        name,
+        gender: gender as "male" | "female",
+        age: parseInt(age),
+        city,
+        photo,
+        bio,
+        interests,
+        onboardingComplete: true,
+        createdAt: new Date().toISOString(),
+      });
+      navigate("/", { replace: true });
+    } catch (err) {
+      console.error("Failed to save profile:", err);
+      // Try without photo as fallback
+      try {
+        saveUserProfile({
+          name,
+          gender: gender as "male" | "female",
+          age: parseInt(age),
+          city,
+          photo: "",
+          bio,
+          interests,
+          onboardingComplete: true,
+          createdAt: new Date().toISOString(),
+        });
+        navigate("/", { replace: true });
+      } catch {
+        alert("Не удалось сохранить анкету. Попробуйте уменьшить фото.");
+      }
+    }
   };
 
   const canProceed = () => {
