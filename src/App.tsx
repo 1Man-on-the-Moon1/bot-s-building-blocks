@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { isOnboardingComplete } from "@/lib/userStore";
+import { isAdminAuthenticated } from "@/lib/adminStore";
 import AppLayout from "./components/app/AppLayout";
 import Feed from "./pages/Feed";
 import Chats from "./pages/Chats";
@@ -13,7 +14,16 @@ import Install from "./pages/Install";
 import Welcome from "./pages/Welcome";
 import Onboarding from "./pages/Onboarding";
 import PresentationPage from "./pages/PresentationPage";
+import AdminLogin from "./pages/AdminLogin";
+import AdminPanel from "./pages/AdminPanel";
 import NotFound from "./pages/NotFound";
+
+function RequireAdmin({ children }: { children: React.ReactNode }) {
+  if (!isAdminAuthenticated()) {
+    return <Navigate to="/admin/login" replace />;
+  }
+  return <>{children}</>;
+}
 
 const queryClient = new QueryClient();
 
