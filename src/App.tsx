@@ -62,6 +62,8 @@ const App = () => (
 
           <Route path="/install" element={<Install />} />
           <Route path="/presentation" element={<PresentationPage />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin" element={<RequireAdmin><AdminPanel /></RequireAdmin>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
